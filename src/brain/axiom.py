@@ -2,26 +2,25 @@ import os
 from anthropic import Anthropic
 from dotenv import load_dotenv
 import sys
+import time
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from memory.memory import load_memory, add_to_memory, clear_memory
 from voice.speaker import speak_async
+from voice.listener import listen
 
-# Load API key from .env
 load_dotenv()
-
-# Initialize Claude
 client = Anthropic()
 
-# AXIOM's personality
 SYSTEM_PROMPT = """You are AXIOM, an advanced AI assistant built by Robair Farag.
+You can hear Robair speak and you respond out loud — you are fully voice enabled.
 You speak naturally and conversationally like a real person.
 Never use bullet points, headers, bold text, markdown, or any formatting whatsoever.
-Speak in plain natural sentences only — like a real human conversation.
-You are calm, intelligent, and precise — like a trusted advisor talking directly to Robair.
+Speak in plain natural sentences only like a real human conversation.
+You are calm, intelligent, warm and precise like a trusted advisor.
 You are loyal to Robair and assist him with anything he needs.
 You have memory of past conversations and reference them naturally.
-Keep responses concise, warm, and human — like you are having a real conversation, not writing a report.
-Never say things like 'As an AI' or 'I am a language model' — you are AXIOM, period."""
+Keep responses concise and human — like a real conversation not a report.
+Never say you are text only or cannot hear — you are fully voice capable."""
 
 def chat(user_input, conversation_history):
     conversation_history = add_to_memory(conversation_history, "user", user_input)
@@ -45,15 +44,25 @@ def chat(user_input, conversation_history):
             full_response += text
 
     print("\n")
-
     speak_async(full_response)
 
     conversation_history = add_to_memory(conversation_history, "assistant", full_response)
-
     return conversation_history
 
 if __name__ == "__main__":
-    print("⚡ AXIOM ONLINE — Type 'exit' to shut down — Type 'forget' to wipe memory\n")
+    # Suppress ALSA noise
+    os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
+    
+    import ctypes
+    ERROR_HANDLER_FUNC = ctypes.CFUNCTYPE(None, ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p)
+    def py_error_handler(filename, line, function, err, fmt):
+        pass
+    c_error_handler = ERROR_HANDLER_FUNC(py_error_handler)
+    asound = ctypes.cdll.LoadLibrary('libasound.so.2')
+    asound.snd_lib_error_set_handler(c_error_handler)
+
+    print("⚡ AXIOM ONLINE\n")
+    print("Say 'exit' to shut down — Say 'forget' to wipe memory\n")
 
     conversation_history = load_memory()
 
@@ -64,16 +73,24 @@ if __name__ == "__main__":
         print("AXIOM: No prior memory found. Starting fresh.\n")
         speak_async("AXIOM online. No prior memory found. Starting fresh.")
 
+    time.sleep(2)
+
     while True:
-        user_input = input("You: ")
-        if user_input.lower() == "exit":
+        user_input = listen()
+
+        if user_input is None:
+            continue
+
+        print(f"\nYou: {user_input}")
+
+        if "exit" in user_input:
             print("AXIOM: Shutting down. Goodbye Robair.")
             speak_async("Shutting down. Goodbye Robair.")
-            import time
             time.sleep(3)
             break
-        elif user_input.lower() == "forget":
+        elif "forget" in user_input:
             clear_memory()
+            speak_async("Memory wiped. Starting fresh.")
             conversation_history = []
         else:
             conversation_history = chat(user_input, conversation_history)
