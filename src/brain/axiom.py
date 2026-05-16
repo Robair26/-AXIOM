@@ -11,19 +11,22 @@ from voice.listener import listen
 from voice.wakeword import wait_for_wake_word
 from tools.search import search_web
 from tools.system import get_system_stats, open_application, create_folder, list_files, control_volume
+from tools.file_reader import read_file, list_downloads
 
 load_dotenv()
 client = Anthropic()
 
 SYSTEM_PROMPT = """You are AXIOM, an advanced AI assistant built by Robair Farag.
 You can hear Robair speak and respond out loud — fully voice enabled.
-You can search the web and control Robair's computer system.
-When you need to take a system action, respond with one of these exact commands on its own line:
+You can search the web, control the computer, and read files and documents.
+When you need to take an action, respond with one of these commands on its own line:
 SEARCH: your search query
 OPEN: application name
 STATS: (to get system performance)
 FOLDER: folder name to create
 VOLUME: up or down or mute
+READFILE: full file path
+LISTDOWNLOADS: (to list files in downloads)
 Only use these commands when Robair asks for them.
 You speak naturally and conversationally like a real person.
 Never use bullet points, headers, bold text, markdown, or any formatting.
@@ -59,6 +62,14 @@ def handle_commands(full_response, api_messages):
             action = line.replace("VOLUME:", "").strip()
             print(f"\n🔊 Volume: {action}")
             result = control_volume(action)
+        elif line.startswith("READFILE:"):
+            file_path = line.replace("READFILE:", "").strip()
+            print(f"\n📄 Reading file: {file_path}")
+            speak_async("Let me read that for you.")
+            result = read_file(file_path)
+        elif line.startswith("LISTDOWNLOADS:"):
+            print(f"\n📂 Listing downloads")
+            result = list_downloads()
     if result:
         followup = client.messages.create(
             model="claude-sonnet-4-5",
@@ -66,7 +77,7 @@ def handle_commands(full_response, api_messages):
             system=SYSTEM_PROMPT,
             messages=api_messages + [
                 {"role": "assistant", "content": full_response},
-                {"role": "user", "content": f"Action result: {result}. Now tell Robair naturally what happened."}
+                {"role": "user", "content": f"Action result: {result}. Now tell Robair naturally what you found."}
             ]
         )
         return followup.content[0].text
