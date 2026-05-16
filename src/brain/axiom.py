@@ -8,6 +8,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from memory.memory import load_memory, add_to_memory, clear_memory
 from voice.speaker import speak_async
 from voice.listener import listen
+from voice.wakeword import wait_for_wake_word
 from tools.search import search_web
 
 load_dotenv()
@@ -50,7 +51,6 @@ def chat(user_input, conversation_history):
 
     print("\n")
 
-    # Check if AXIOM wants to search
     if "SEARCH:" in full_response:
         lines = full_response.split("\n")
         for line in lines:
@@ -58,22 +58,19 @@ def chat(user_input, conversation_history):
                 query = line.replace("SEARCH:", "").strip()
                 print(f"\n🔍 AXIOM searching: {query}\n")
                 speak_async("Let me look that up for you.")
-                
+
                 results = search_web(query)
-                
-                # Feed results back to AXIOM
-                search_message = f"Here are the web search results for '{query}':\n{results}\nNow give Robair a natural conversational answer based on these results."
-                
+
                 followup = client.messages.create(
                     model="claude-sonnet-4-5",
                     max_tokens=1024,
                     system=SYSTEM_PROMPT,
                     messages=api_messages + [
                         {"role": "assistant", "content": full_response},
-                        {"role": "user", "content": search_message}
+                        {"role": "user", "content": f"Search results for '{query}':\n{results}\nNow give Robair a natural conversational answer."}
                     ]
                 )
-                
+
                 full_response = followup.content[0].text
                 print(f"AXIOM: {full_response}\n")
                 speak_async(full_response)
@@ -93,29 +90,31 @@ if __name__ == "__main__":
     asound = ctypes.cdll.LoadLibrary('libasound.so.2')
     asound.snd_lib_error_set_handler(c_error_handler)
 
-    print("⚡ AXIOM ONLINE\n")
-    print("Say 'exit' to shut down — Say 'forget' to wipe memory\n")
+    print("⚡ AXIOM SYSTEM STARTING...\n")
 
     conversation_history = load_memory()
 
     if conversation_history:
         print(f"AXIOM: Memory restored — {len(conversation_history)} messages loaded.\n")
-        speak_async("AXIOM online. Memory restored. Welcome back Robair.")
     else:
         print("AXIOM: No prior memory found. Starting fresh.\n")
-        speak_async("AXIOM online. No prior memory found. Starting fresh.")
-
-    time.sleep(2)
 
     while True:
+        # Wait for wake word
+        wait_for_wake_word()
+        
+        speak_async("Yes Robair, I'm listening.")
+        
+        # Listen for command
         user_input = listen()
-
+        
         if user_input is None:
+            speak_async("I didn't catch that.")
             continue
 
         print(f"\nYou: {user_input}")
 
-        if "exit" in user_input:
+        if "exit" in user_input or "shutdown" in user_input:
             print("AXIOM: Shutting down. Goodbye Robair.")
             speak_async("Shutting down. Goodbye Robair.")
             time.sleep(3)
