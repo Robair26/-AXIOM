@@ -23,25 +23,30 @@ def chat(user_input):
         "role": "user",
         "content": user_input
     })
-    
-    # Send to Claude
-    response = client.messages.create(
-        model="claude-sonnet-4-20250514",
+
+    # Stream response from Claude
+    print("\nAXIOM: ", end="", flush=True)
+    full_response = ""
+
+    with client.messages.stream(
+        model="claude-sonnet-4-5",
         max_tokens=1024,
         system=SYSTEM_PROMPT,
         messages=conversation_history
-    )
-    
-    # Get AXIOM's response
-    axiom_response = response.content[0].text
-    
-    # Add to history so AXIOM remembers
+    ) as stream:
+        for text in stream.text_stream:
+            print(text, end="", flush=True)
+            full_response += text
+
+    print("\n")
+
+    # Add full response to history
     conversation_history.append({
         "role": "assistant",
-        "content": axiom_response
+        "content": full_response
     })
-    
-    return axiom_response
+
+    return full_response
 
 # Run AXIOM
 if __name__ == "__main__":
@@ -51,5 +56,4 @@ if __name__ == "__main__":
         if user_input.lower() == "exit":
             print("AXIOM: Shutting down. Goodbye Robair.")
             break
-        response = chat(user_input)
-        print(f"\nAXIOM: {response}\n")
+        chat(user_input)
