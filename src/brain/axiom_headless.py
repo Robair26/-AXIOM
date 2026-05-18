@@ -2,7 +2,9 @@ import os
 from anthropic import Anthropic
 from dotenv import load_dotenv
 import sys
+import time
 from flask import Flask, request, jsonify
+from prometheus_flask_exporter import PrometheusMetrics
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from memory.memory import load_memory, add_to_memory, clear_memory
 from tools.search import search_web
@@ -12,8 +14,11 @@ from security.security import require_auth, generate_token, rate_limit_check
 load_dotenv()
 client = Anthropic()
 app = Flask(__name__)
+metrics = PrometheusMetrics(app)
 
-# Rate limiting store
+# Custom metrics
+metrics.info('axiom_info', 'AXIOM AI Assistant', version='1.0.0')
+
 requests_store = {}
 
 SYSTEM_PROMPT = """You are AXIOM, an advanced AI assistant built by Robair Farag.
@@ -33,7 +38,6 @@ def health():
 
 @app.route('/auth', methods=['POST'])
 def auth():
-    """Get authentication token"""
     data = request.json
     password = data.get('password', '')
     axiom_password = os.getenv('AXIOM_PASSWORD', 'axiom2024')
@@ -44,14 +48,14 @@ def auth():
 
 @app.route('/chat', methods=['POST'])
 @require_auth
+@metrics.counter('axiom_chat_requests', 'Number of chat requests')
 def chat():
     global conversation_history
-
-    # Rate limiting
     ip = request.remote_addr
     if not rate_limit_check(ip, requests_store):
         return jsonify({"error": "Rate limit exceeded"}), 429
 
+    start_time = time.time()
     data = request.json
     user_input = data.get('message', '')
 
@@ -68,7 +72,8 @@ def chat():
     full_response = response.content[0].text
     conversation_history = add_to_memory(conversation_history, "assistant", full_response)
 
-    return jsonify({"response": full_response})
+    response_time = time.time() - start_time
+    return jsonify({"response": full_response, "response_time": response_time})
 
 @app.route('/stats', methods=['GET'])
 @require_auth
@@ -84,5 +89,5 @@ def clear():
     return jsonify({"status": "Memory cleared"})
 
 if __name__ == "__main__":
-    print("⚡ AXIOM HEADLESS SERVICE ONLINE — SECURED")
+    print("⚡ AXIOM HEADLESS SERVICE ONLINE — SECURED + MONITORED")
     app.run(host='0.0.0.0', port=8080)
