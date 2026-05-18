@@ -7,10 +7,14 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from memory.memory import load_memory, add_to_memory, clear_memory
 from tools.search import search_web
 from tools.system import get_system_stats
+from security.security import require_auth, generate_token, rate_limit_check
 
 load_dotenv()
 client = Anthropic()
 app = Flask(__name__)
+
+# Rate limiting store
+requests_store = {}
 
 SYSTEM_PROMPT = """You are AXIOM, an advanced AI assistant built by Robair Farag.
 You are running as a headless cloud service.
@@ -27,9 +31,27 @@ conversation_history = load_memory()
 def health():
     return jsonify({"status": "AXIOM online", "messages": len(conversation_history)})
 
+@app.route('/auth', methods=['POST'])
+def auth():
+    """Get authentication token"""
+    data = request.json
+    password = data.get('password', '')
+    axiom_password = os.getenv('AXIOM_PASSWORD', 'axiom2024')
+    if password == axiom_password:
+        token = generate_token()
+        return jsonify({"token": token})
+    return jsonify({"error": "Invalid password"}), 401
+
 @app.route('/chat', methods=['POST'])
+@require_auth
 def chat():
     global conversation_history
+
+    # Rate limiting
+    ip = request.remote_addr
+    if not rate_limit_check(ip, requests_store):
+        return jsonify({"error": "Rate limit exceeded"}), 429
+
     data = request.json
     user_input = data.get('message', '')
 
@@ -49,9 +71,18 @@ def chat():
     return jsonify({"response": full_response})
 
 @app.route('/stats', methods=['GET'])
+@require_auth
 def stats():
     return jsonify({"stats": get_system_stats()})
 
+@app.route('/memory/clear', methods=['DELETE'])
+@require_auth
+def clear():
+    global conversation_history
+    clear_memory()
+    conversation_history = []
+    return jsonify({"status": "Memory cleared"})
+
 if __name__ == "__main__":
-    print("⚡ AXIOM HEADLESS SERVICE ONLINE")
+    print("⚡ AXIOM HEADLESS SERVICE ONLINE — SECURED")
     app.run(host='0.0.0.0', port=8080)
