@@ -1,0 +1,15 @@
+anthropic
+openai
+python-dotenv
+requests
+speechrecognition
+pyaudio
+pyttsx3
+elevenlabs
+pygame
+chromadb
+ddgs
+psutil
+pyautogui
+pypdf2
+python-docx
