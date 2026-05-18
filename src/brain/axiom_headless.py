@@ -3,7 +3,8 @@ from anthropic import Anthropic
 from dotenv import load_dotenv
 import sys
 import time
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
+from flask_cors import CORS
 from prometheus_flask_exporter import PrometheusMetrics
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from memory.memory import load_memory, add_to_memory, clear_memory
@@ -14,9 +15,8 @@ from security.security import require_auth, generate_token, rate_limit_check
 load_dotenv()
 client = Anthropic()
 app = Flask(__name__)
+CORS(app)
 metrics = PrometheusMetrics(app)
-
-# Custom metrics
 metrics.info('axiom_info', 'AXIOM AI Assistant', version='1.0.0')
 
 requests_store = {}
@@ -31,6 +31,10 @@ You are loyal to Robair and assist him with anything he needs.
 You have memory of past conversations and reference them naturally."""
 
 conversation_history = load_memory()
+
+@app.route('/')
+def ui():
+    return send_from_directory('/app/src/ui', 'index.html')
 
 @app.route('/health', methods=['GET'])
 def health():
@@ -54,24 +58,19 @@ def chat():
     ip = request.remote_addr
     if not rate_limit_check(ip, requests_store):
         return jsonify({"error": "Rate limit exceeded"}), 429
-
     start_time = time.time()
     data = request.json
     user_input = data.get('message', '')
-
     conversation_history = add_to_memory(conversation_history, "user", user_input)
     api_messages = [{"role": m["role"], "content": m["content"]} for m in conversation_history]
-
     response = client.messages.create(
         model="claude-sonnet-4-5",
         max_tokens=1024,
         system=SYSTEM_PROMPT,
         messages=api_messages
     )
-
     full_response = response.content[0].text
     conversation_history = add_to_memory(conversation_history, "assistant", full_response)
-
     response_time = time.time() - start_time
     return jsonify({"response": full_response, "response_time": response_time})
 

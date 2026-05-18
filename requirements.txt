@@ -16,3 +16,4 @@ python-docx
 flask
 pyjwt
 prometheus-flask-exporter
+flask-cors
