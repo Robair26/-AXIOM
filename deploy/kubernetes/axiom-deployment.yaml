@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: axiom
+  labels:
+    app: axiom
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: axiom
+  template:
+    metadata:
+      labels:
+        app: axiom
+    spec:
+      containers:
+      - name: axiom
+        image: axiom:latest
+        imagePullPolicy: Never
+        env:
+        - name: ANTHROPIC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: axiom-secrets
+              key: ANTHROPIC_API_KEY
+        - name: ELEVENLABS_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: axiom-secrets
+              key: ELEVENLABS_API_KEY
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+        volumeMounts:
+        - name: axiom-memory
+          mountPath: /app/config
+      volumes:
+      - name: axiom-memory
+        persistentVolumeClaim:
+          claimName: axiom-memory-pvc

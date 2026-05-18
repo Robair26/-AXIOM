@@ -13,3 +13,4 @@ psutil
 pyautogui
 pypdf2
 python-docx
+flask
