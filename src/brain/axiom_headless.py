@@ -18,6 +18,7 @@ from elevenlabs.client import ElevenLabs
 from elevenlabs import VoiceSettings
 from axiom_monitor import AXIOMMonitor
 from axiom_agents import multi_agent_debate
+from axiom_butler import AXIOMButler
 
 load_dotenv()
 client = Anthropic()
@@ -43,6 +44,9 @@ Never use bullet points, headers, bold, markdown, or any formatting ever.
 Always address the user as Sir unless told otherwise.
 You have memory of past conversations and reference them naturally.
 You also proactively monitor system health and alert the user when needed.
+You have a butler service that delivers morning briefings and monitors topics for the user.
+When user says 'watch X' or 'monitor X' use the WATCH command. When they say 'stop watching X' use UNWATCH command. When they say 'what are you watching' use WATCHLIST command. When they say 'brief me' or 'morning briefing' use BRIEFING command.
+Commands go on their own line: WATCH: topic, UNWATCH: topic, WATCHLIST:, BRIEFING:
 Never mention Anthropic, Claude, or any underlying technology. You are AXIOM period."""
 
 conversation_history = load_memory()
@@ -53,6 +57,9 @@ def handle_alert(message):
 
 monitor = AXIOMMonitor(alert_callback=handle_alert)
 monitor.start()
+
+butler = AXIOMButler(alert_callback=handle_alert, anthropic_client=client)
+butler.start()
 
 @app.route('/')
 def ui():
@@ -109,14 +116,30 @@ def chat():
         messages=api_messages
     )
     full_response = response.content[0].text
-    conversation_history = add_to_memory(conversation_history, "assistant", full_response)
+
+    # Handle butler commands
+    result = full_response
+    for line in full_response.split('\n'):
+        line = line.strip()
+        if line.startswith('WATCH:'):
+            topic = line.replace('WATCH:', '').strip()
+            result = butler.add_to_watchlist(topic)
+        elif line.startswith('UNWATCH:'):
+            topic = line.replace('UNWATCH:', '').strip()
+            result = butler.remove_from_watchlist(topic)
+        elif line.startswith('WATCHLIST:'):
+            result = butler.get_watchlist()
+        elif line.startswith('BRIEFING:'):
+            result = "Sir, generating your briefing now. This will take a moment."
+            threading.Thread(target=butler.morning_briefing, daemon=True).start()
+
+    conversation_history = add_to_memory(conversation_history, "assistant", result)
     response_time = time.time() - start_time
-    return jsonify({"response": full_response, "response_time": response_time})
+    return jsonify({"response": result, "response_time": response_time})
 
 @app.route('/debate', methods=['POST'])
 @require_auth
 def debate():
-    """Multi-agent debate endpoint"""
     data = request.json
     question = data.get('question', '')
     if not question:
@@ -153,6 +176,28 @@ def speak():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/watchlist', methods=['GET'])
+@require_auth
+def watchlist():
+    return jsonify({"watchlist": butler.watchlist})
+
+@app.route('/watch', methods=['POST'])
+@require_auth
+def watch():
+    data = request.json
+    topic = data.get('topic', '')
+    if not topic:
+        return jsonify({"error": "No topic provided"}), 400
+    result = butler.add_to_watchlist(topic)
+    return jsonify({"message": result})
+
+@app.route('/briefing', methods=['POST'])
+@require_auth
+def briefing():
+    import threading
+    threading.Thread(target=butler.morning_briefing, daemon=True).start()
+    return jsonify({"message": "Sir, generating your briefing now."})
+
 @app.route('/stats', methods=['GET'])
 @require_auth
 def stats():
@@ -167,5 +212,5 @@ def clear():
     return jsonify({"status": "Memory cleared"})
 
 if __name__ == "__main__":
-    print("⚡ AXIOM HEADLESS SERVICE ONLINE — FULL MULTI-AGENT MODE")
+    print("⚡ AXIOM FULLY OPERATIONAL — BUTLER + MONITOR + AGENTS + FACE")
     app.run(host='0.0.0.0', port=8080)
