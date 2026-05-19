@@ -25,8 +25,10 @@
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .message .sender { font-size: 0.7em; letter-spacing: 0.2em; margin-bottom: 5px; color: rgba(0, 212, 255, 0.6); }
         .message.axiom .sender { color: #00ff88; }
+        .message.alert .sender { color: #ff4444; }
         .message .text { font-size: 0.85em; line-height: 1.6; padding: 10px 15px; border-left: 2px solid rgba(0, 212, 255, 0.3); }
         .message.axiom .text { border-left-color: #00ff88; }
+        .message.alert .text { border-left-color: #ff4444; }
         .chat-input { display: flex; gap: 10px; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(0, 212, 255, 0.2); flex-shrink: 0; }
         .chat-input input { flex: 1; background: rgba(0, 212, 255, 0.05); border: 1px solid rgba(0, 212, 255, 0.3); border-radius: 5px; padding: 10px 15px; color: #00d4ff; font-family: 'Courier New', monospace; font-size: 0.9em; outline: none; }
         .chat-input input:focus { border-color: #00d4ff; box-shadow: 0 0 15px rgba(0, 212, 255, 0.2); }
@@ -58,6 +60,8 @@
         .toggle.on { background: rgba(0, 255, 136, 0.3); border-color: #00ff88; }
         .toggle::after { content: ''; position: absolute; width: 12px; height: 12px; background: #00d4ff; border-radius: 50%; top: 2px; left: 2px; transition: all 0.3s; }
         .toggle.on::after { left: 20px; background: #00ff88; }
+        .alert-flash { animation: alertFlash 0.5s ease-in-out 3; }
+        @keyframes alertFlash { 0%, 100% { border-color: rgba(0, 212, 255, 0.3); } 50% { border-color: #ff4444; box-shadow: 0 0 20px rgba(255, 68, 68, 0.5); } }
     </style>
 </head>
 <body>
@@ -85,7 +89,7 @@
                 <div class="metric"><div class="metric-label"><span>DISK</span><span id="disk-val">--</span></div><div class="metric-bar"><div class="metric-fill" id="disk-bar" style="width:0%"></div></div></div>
             </div>
         </div>
-        <div class="panel-center">
+        <div class="panel-center" id="main-panel">
             <div class="panel-title" style="flex-shrink:0;">⬡ AXIOM Interface</div>
             <div class="chat-messages" id="chat-messages">
                 <div class="message axiom">
@@ -192,12 +196,8 @@
 
         function toggleVoice() {
             if (!recognition) return;
-            if (isListening) {
-                recognition.stop();
-            } else {
-                stopSpeaking();
-                recognition.start();
-            }
+            if (isListening) { recognition.stop(); }
+            else { stopSpeaking(); recognition.start(); }
         }
 
         function stopListening() {
@@ -205,9 +205,7 @@
             document.getElementById('mic-btn').classList.remove('listening');
             document.getElementById('mic-btn').textContent = '🎤';
             deactivateWaveform();
-            if (!conversationMode) {
-                document.getElementById('voice-status').textContent = '';
-            }
+            if (!conversationMode) document.getElementById('voice-status').textContent = '';
         }
 
         function stopSpeaking() {
@@ -217,11 +215,10 @@
                 currentAudio = null;
             }
             document.getElementById('mic-btn').classList.remove('speaking');
+            document.getElementById('mic-btn').textContent = '🎤';
             document.getElementById('stop-btn').classList.remove('visible');
             deactivateWaveform();
-            if (conversationMode) {
-                document.getElementById('voice-status').textContent = '🟢 READY — CLICK MIC TO SPEAK';
-            }
+            if (conversationMode) document.getElementById('voice-status').textContent = '🟢 READY — CLICK MIC TO SPEAK';
         }
 
         async function speak(text) {
@@ -230,7 +227,6 @@
                 document.getElementById('mic-btn').textContent = '🔊';
                 document.getElementById('stop-btn').classList.add('visible');
                 activateWaveform();
-
                 const res = await fetch(`${API_URL}/speak`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -248,15 +244,10 @@
                     currentAudio.play();
                     currentAudio.onended = () => {
                         stopSpeaking();
-                        if (conversationMode) {
-                            document.getElementById('voice-status').textContent = '🟢 YOUR TURN — CLICK MIC TO SPEAK';
-                        }
+                        if (conversationMode) document.getElementById('voice-status').textContent = '🟢 YOUR TURN — CLICK MIC TO SPEAK';
                     };
                 }
-            } catch (e) {
-                console.log('TTS error:', e);
-                stopSpeaking();
-            }
+            } catch (e) { console.log('TTS error:', e); stopSpeaking(); }
         }
 
         async function authenticate() {
@@ -336,9 +327,25 @@
             } catch (e) {}
         }
 
+        function startAlertListener() {
+            const evtSource = new EventSource(`${API_URL}/alerts`);
+            evtSource.onmessage = async (event) => {
+                const data = JSON.parse(event.data);
+                if (data.alert) {
+                    addMessage('⚠️ AXIOM ALERT', data.alert, 'alert');
+                    addActivity('⚠️ Proactive alert fired');
+                    document.getElementById('main-panel').classList.add('alert-flash');
+                    setTimeout(() => document.getElementById('main-panel').classList.remove('alert-flash'), 2000);
+                    if (token) await speak(data.alert);
+                }
+            };
+            evtSource.onerror = () => { setTimeout(startAlertListener, 5000); };
+        }
+
         authenticate();
         initSpeech();
         setInterval(updateStats, 5000);
+        setTimeout(startAlertListener, 2000);
     </script>
 </body>
 </html>

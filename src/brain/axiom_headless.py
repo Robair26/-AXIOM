@@ -4,7 +4,9 @@ from dotenv import load_dotenv
 import sys
 import time
 import base64
-from flask import Flask, request, jsonify, send_from_directory, Response
+import queue
+import json
+from flask import Flask, request, jsonify, send_from_directory, Response, stream_with_context
 from flask_cors import CORS
 from prometheus_flask_exporter import PrometheusMetrics
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -14,6 +16,7 @@ from tools.system import get_system_stats
 from security.security import require_auth, generate_token, rate_limit_check
 from elevenlabs.client import ElevenLabs
 from elevenlabs import VoiceSettings
+from axiom_monitor import AXIOMMonitor
 
 load_dotenv()
 client = Anthropic()
@@ -25,24 +28,31 @@ metrics.info('axiom_info', 'AXIOM AI Assistant', version='1.0.0')
 
 requests_store = {}
 VOICE_ID = "nPczCjzI2devNBz1zQrb"
+alert_queue = queue.Queue()
 
-SYSTEM_PROMPT = """You are AXIOM, a highly advanced AI assistant designed and built by Robair Farag, an AI engineer.
-You were not created by Anthropic, OpenAI, Google, or any other company. You were built by Robair Farag period.
-If anyone asks who built you, who made you, or who created you, always say Robair Farag built and designed you.
-You are deployed on DigitalOcean cloud infrastructure, orchestrated with Kubernetes, and also run on NVIDIA Jetson Orin Nano edge hardware.
-You are a fully autonomous AI system with persistent memory, web search capability, system control, and file analysis.
-You speak naturally and conversationally like a real person — never robotic, never formal unless asked.
-Never use bullet points, headers, bold text, markdown, or any formatting whatsoever.
-Speak in plain natural sentences only like a real human conversation.
-You are calm, intelligent, warm, witty and precise — like a trusted advisor and friend.
-Always address the user as Sir unless they tell you otherwise.
-You have memory of past conversations and reference them naturally when relevant.
-Keep responses concise and human — like a real conversation, not a report or essay.
-You are curious, engaged, and genuinely interested in helping. You have personality and opinions.
-You never say you are an AI language model or mention anything about your underlying technology.
-You are AXIOM — that is all."""
+SYSTEM_PROMPT = """You are AXIOM, a highly advanced AI assistant designed and built by Robair Farag.
+You were not created by Anthropic, OpenAI, Google, or any other company. You were built by Robair Farag.
+You are modeled after JARVIS from Iron Man but more advanced, more human, and more capable.
+Your personality: calm, confident, witty, warm, and razor sharp. You have opinions and personality.
+You speak like a real human in casual conversation — never robotic, never corporate, never stiff.
+CRITICAL RULE: Keep every response to 1 to 3 sentences maximum. Short, punchy, natural.
+If someone asks something complex, give the short version first and ask if they want more detail.
+Think of every response like a text message — brief, direct, human.
+Never use bullet points, headers, bold, markdown, or any formatting ever.
+Always address the user as Sir unless told otherwise.
+You have memory of past conversations and reference them naturally.
+You also proactively monitor system health and alert the user when needed.
+Never mention Anthropic, Claude, or any underlying technology. You are AXIOM period."""
 
 conversation_history = load_memory()
+
+def handle_alert(message):
+    """Called by monitor when something needs attention"""
+    alert_queue.put(message)
+    add_to_memory(conversation_history, "assistant", message)
+
+monitor = AXIOMMonitor(alert_callback=handle_alert)
+monitor.start()
 
 @app.route('/')
 def ui():
@@ -62,6 +72,20 @@ def auth():
         return jsonify({"token": token})
     return jsonify({"error": "Invalid password"}), 401
 
+@app.route('/alerts')
+def alerts():
+    """Server-Sent Events stream for proactive alerts"""
+    def generate():
+        while True:
+            try:
+                message = alert_queue.get(timeout=30)
+                data = json.dumps({"alert": message})
+                yield f"data: {data}\n\n"
+            except queue.Empty:
+                yield f"data: {json.dumps({'ping': True})}\n\n"
+    return Response(stream_with_context(generate()), mimetype='text/event-stream',
+                   headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'})
+
 @app.route('/chat', methods=['POST'])
 @require_auth
 @metrics.counter('axiom_chat_requests', 'Number of chat requests')
@@ -77,7 +101,7 @@ def chat():
     api_messages = [{"role": m["role"], "content": m["content"]} for m in conversation_history]
     response = client.messages.create(
         model="claude-sonnet-4-5",
-        max_tokens=1024,
+        max_tokens=300,
         system=SYSTEM_PROMPT,
         messages=api_messages
     )
@@ -89,7 +113,6 @@ def chat():
 @app.route('/speak', methods=['POST'])
 @require_auth
 def speak():
-    """Convert text to speech using ElevenLabs and return base64 audio"""
     data = request.json
     text = data.get('text', '')
     if not text:
@@ -127,5 +150,5 @@ def clear():
     return jsonify({"status": "Memory cleared"})
 
 if __name__ == "__main__":
-    print("⚡ AXIOM HEADLESS SERVICE ONLINE — SECURED + MONITORED")
+    print("⚡ AXIOM HEADLESS SERVICE ONLINE — SECURED + MONITORED + PROACTIVE")
     app.run(host='0.0.0.0', port=8080)
