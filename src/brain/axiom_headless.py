@@ -17,6 +17,7 @@ from security.security import require_auth, generate_token, rate_limit_check
 from elevenlabs.client import ElevenLabs
 from elevenlabs import VoiceSettings
 from axiom_monitor import AXIOMMonitor
+from axiom_agents import multi_agent_debate
 
 load_dotenv()
 client = Anthropic()
@@ -112,6 +113,20 @@ def chat():
     response_time = time.time() - start_time
     return jsonify({"response": full_response, "response_time": response_time})
 
+@app.route('/debate', methods=['POST'])
+@require_auth
+def debate():
+    """Multi-agent debate endpoint"""
+    data = request.json
+    question = data.get('question', '')
+    if not question:
+        return jsonify({"error": "No question provided"}), 400
+    try:
+        results = multi_agent_debate(question)
+        return jsonify(results)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/speak', methods=['POST'])
 @require_auth
 def speak():
@@ -152,5 +167,5 @@ def clear():
     return jsonify({"status": "Memory cleared"})
 
 if __name__ == "__main__":
-    print("⚡ AXIOM HEADLESS SERVICE ONLINE — SECURED + MONITORED + FACE ACTIVE")
+    print("⚡ AXIOM HEADLESS SERVICE ONLINE — FULL MULTI-AGENT MODE")
     app.run(host='0.0.0.0', port=8080)

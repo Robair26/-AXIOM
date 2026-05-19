@@ -20,7 +20,7 @@
         .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #00ff88; box-shadow: 0 0 10px #00ff88; animation: blink 1.5s ease-in-out infinite; }
         @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
         .panel-center { border: 1px solid rgba(0, 212, 255, 0.3); border-radius: 10px; padding: 15px; background: rgba(0, 212, 255, 0.03); display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
-        .face-container { display: flex; justify-content: center; align-items: center; flex-shrink: 0; margin-bottom: 10px; }
+        .face-container { display: flex; justify-content: center; align-items: center; flex-shrink: 0; margin-bottom: 8px; }
         .face-container iframe { border: 1px solid rgba(0, 212, 255, 0.2); border-radius: 50%; background: #000; }
         .chat-messages { flex: 1; overflow-y: auto; padding: 10px; scrollbar-width: thin; scrollbar-color: rgba(0, 212, 255, 0.3) transparent; min-height: 0; }
         .message { margin-bottom: 12px; animation: fadeIn 0.3s ease; }
@@ -28,13 +28,21 @@
         .message .sender { font-size: 0.7em; letter-spacing: 0.2em; margin-bottom: 3px; color: rgba(0, 212, 255, 0.6); }
         .message.axiom .sender { color: #00ff88; }
         .message.alert .sender { color: #ff4444; }
+        .message.alpha .sender { color: #00d4ff; }
+        .message.beta .sender { color: #ff88ff; }
+        .message.gamma .sender { color: #ffaa00; }
+        .message.synthesis .sender { color: #00ff88; }
         .message .text { font-size: 0.82em; line-height: 1.5; padding: 8px 12px; border-left: 2px solid rgba(0, 212, 255, 0.3); }
         .message.axiom .text { border-left-color: #00ff88; }
         .message.alert .text { border-left-color: #ff4444; }
+        .message.alpha .text { border-left-color: #00d4ff; }
+        .message.beta .text { border-left-color: #ff88ff; }
+        .message.gamma .text { border-left-color: #ffaa00; }
+        .message.synthesis .text { border-left-color: #00ff88; }
         .chat-input { display: flex; gap: 8px; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(0, 212, 255, 0.2); flex-shrink: 0; }
         .chat-input input { flex: 1; background: rgba(0, 212, 255, 0.05); border: 1px solid rgba(0, 212, 255, 0.3); border-radius: 5px; padding: 8px 12px; color: #00d4ff; font-family: 'Courier New', monospace; font-size: 0.85em; outline: none; }
         .chat-input input:focus { border-color: #00d4ff; box-shadow: 0 0 15px rgba(0, 212, 255, 0.2); }
-        .chat-input button { background: rgba(0, 212, 255, 0.1); border: 1px solid rgba(0, 212, 255, 0.5); border-radius: 5px; padding: 8px 15px; color: #00d4ff; font-family: 'Courier New', monospace; cursor: pointer; letter-spacing: 0.1em; transition: all 0.3s; flex-shrink: 0; font-size: 0.85em; }
+        .chat-input button { background: rgba(0, 212, 255, 0.1); border: 1px solid rgba(0, 212, 255, 0.5); border-radius: 5px; padding: 8px 12px; color: #00d4ff; font-family: 'Courier New', monospace; cursor: pointer; letter-spacing: 0.1em; transition: all 0.3s; flex-shrink: 0; font-size: 0.82em; }
         .chat-input button:hover { background: rgba(0, 212, 255, 0.2); box-shadow: 0 0 20px rgba(0, 212, 255, 0.3); }
         .mic-btn { background: rgba(0, 255, 136, 0.1); border: 1px solid rgba(0, 255, 136, 0.5); border-radius: 5px; padding: 8px 12px; color: #00ff88; cursor: pointer; transition: all 0.3s; flex-shrink: 0; font-size: 1em; }
         .mic-btn.listening { background: rgba(255, 68, 68, 0.2); border-color: #ff4444; color: #ff4444; box-shadow: 0 0 20px rgba(255, 68, 68, 0.5); animation: micPulse 0.5s ease-in-out infinite; }
@@ -42,6 +50,8 @@
         @keyframes micPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
         .stop-btn { background: rgba(255, 68, 68, 0.1); border: 1px solid rgba(255, 68, 68, 0.5); border-radius: 5px; padding: 8px 12px; color: #ff4444; cursor: pointer; transition: all 0.3s; flex-shrink: 0; display: none; }
         .stop-btn.visible { display: block; }
+        .debate-btn { background: rgba(255, 136, 255, 0.1); border: 1px solid rgba(255, 136, 255, 0.5); border-radius: 5px; padding: 8px 12px; color: #ff88ff; cursor: pointer; transition: all 0.3s; flex-shrink: 0; font-size: 0.82em; font-family: 'Courier New', monospace; letter-spacing: 0.1em; }
+        .debate-btn:hover { background: rgba(255, 136, 255, 0.2); box-shadow: 0 0 20px rgba(255, 136, 255, 0.3); }
         .panel-right { border: 1px solid rgba(0, 212, 255, 0.3); border-radius: 10px; padding: 15px; background: rgba(0, 212, 255, 0.03); overflow-y: auto; }
         .waveform { display: flex; align-items: center; justify-content: center; gap: 3px; height: 40px; margin: 10px 0; }
         .wave-bar { width: 3px; background: #00d4ff; border-radius: 3px; animation: wave 1s ease-in-out infinite; box-shadow: 0 0 5px #00d4ff; }
@@ -64,6 +74,7 @@
         .toggle.on::after { left: 20px; background: #00ff88; }
         .alert-flash { animation: alertFlash 0.5s ease-in-out 3; }
         @keyframes alertFlash { 0%, 100% { border-color: rgba(0, 212, 255, 0.3); } 50% { border-color: #ff4444; box-shadow: 0 0 20px rgba(255, 68, 68, 0.5); } }
+        .debate-separator { text-align: center; font-size: 0.65em; color: rgba(255, 136, 255, 0.5); letter-spacing: 0.3em; padding: 8px 0; border-top: 1px solid rgba(255, 136, 255, 0.2); border-bottom: 1px solid rgba(255, 136, 255, 0.2); margin: 8px 0; }
     </style>
 </head>
 <body>
@@ -94,7 +105,7 @@
         <div class="panel-center" id="main-panel">
             <div class="panel-title" style="flex-shrink:0;">⬡ AXIOM Interface</div>
             <div class="face-container">
-                <iframe id="face-frame" src="/face" width="180" height="180" frameborder="0" scrolling="no"></iframe>
+                <iframe id="face-frame" src="/face" width="160" height="160" frameborder="0" scrolling="no"></iframe>
             </div>
             <div class="chat-messages" id="chat-messages">
                 <div class="message axiom">
@@ -112,6 +123,7 @@
                 <input type="text" id="user-input" placeholder="Enter command or press 🎤 to speak..." onkeypress="handleKey(event)">
                 <button class="mic-btn" id="mic-btn" onclick="toggleVoice()">🎤</button>
                 <button class="stop-btn" id="stop-btn" onclick="stopSpeaking()">⏹</button>
+                <button class="debate-btn" onclick="startDebate()" title="Multi-agent debate">⚡ DEBATE</button>
                 <button onclick="sendMessage()">SEND</button>
             </div>
         </div>
@@ -260,6 +272,56 @@
                     };
                 }
             } catch (e) { console.log('TTS error:', e); stopSpeaking(); }
+        }
+
+        async function startDebate() {
+            const input = document.getElementById('user-input');
+            const question = input.value.trim();
+            if (!question) {
+                document.getElementById('voice-status').textContent = '⚠️ TYPE A QUESTION FIRST THEN CLICK DEBATE';
+                return;
+            }
+            input.value = '';
+            if (!token) await authenticate();
+
+            addMessage('YOU', question, 'user');
+            const sep = document.createElement('div');
+            sep.className = 'debate-separator';
+            sep.textContent = '⚡ MULTI-AGENT DEBATE INITIATED ⚡';
+            document.getElementById('chat-messages').appendChild(sep);
+            document.getElementById('chat-messages').scrollTop = document.getElementById('chat-messages').scrollHeight;
+
+            document.getElementById('thinking').style.display = 'block';
+            document.getElementById('voice-status').textContent = '⚡ 3 AGENTS DEBATING...';
+
+            try {
+                const res = await fetch(`${API_URL}/debate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ question })
+                });
+                const data = await res.json();
+                document.getElementById('thinking').style.display = 'none';
+
+                addMessage('AXIOM ALPHA // ANALYTICAL', data.alpha, 'alpha');
+                await new Promise(r => setTimeout(r, 500));
+                addMessage('AXIOM BETA // CREATIVE', data.beta, 'beta');
+                await new Promise(r => setTimeout(r, 500));
+                addMessage('AXIOM GAMMA // CRITICAL', data.gamma, 'gamma');
+                await new Promise(r => setTimeout(r, 500));
+
+                const finalSep = document.createElement('div');
+                finalSep.className = 'debate-separator';
+                finalSep.textContent = '⚡ SYNTHESIS ⚡';
+                document.getElementById('chat-messages').appendChild(finalSep);
+
+                addMessage('AXIOM // UNIFIED', data.synthesis, 'synthesis');
+                addActivity('⚡ Multi-agent debate complete');
+                await speak(data.synthesis);
+            } catch (e) {
+                addMessage('AXIOM', 'Debate error: ' + e.message, 'axiom');
+                document.getElementById('thinking').style.display = 'none';
+            }
         }
 
         async function authenticate() {
