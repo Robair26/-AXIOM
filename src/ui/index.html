@@ -2,90 +2,144 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>AXIOM — Advanced AI System</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: #000; color: #00d4ff; font-family: 'Courier New', monospace; height: 100vh; overflow: hidden; }
-        .grid-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-image: linear-gradient(rgba(0, 212, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 212, 255, 0.03) 1px, transparent 1px); background-size: 50px 50px; animation: gridMove 20s linear infinite; }
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { background: #000; color: #00d4ff; font-family: 'Courier New', monospace; height: 100dvh; overflow: hidden; }
+        .grid-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-image: linear-gradient(rgba(0, 212, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 212, 255, 0.03) 1px, transparent 1px); background-size: 50px 50px; animation: gridMove 20s linear infinite; pointer-events: none; }
         @keyframes gridMove { 0% { transform: translate(0, 0); } 100% { transform: translate(50px, 50px); } }
-        .container { position: relative; z-index: 10; display: grid; grid-template-columns: 1fr 2fr 1fr; grid-template-rows: auto 1fr auto; height: 100vh; padding: 20px; gap: 20px; }
-        .header { grid-column: 1 / -1; text-align: center; padding: 10px; border-bottom: 1px solid rgba(0, 212, 255, 0.3); }
-        .header h1 { font-size: 2.5em; letter-spacing: 0.5em; text-transform: uppercase; text-shadow: 0 0 30px #00d4ff, 0 0 60px #00d4ff; animation: pulse 2s ease-in-out infinite; }
+        .scan-line { position: fixed; top: 0; left: 0; width: 100%; height: 2px; background: linear-gradient(90deg, transparent, #00d4ff, transparent); animation: scan 4s linear infinite; opacity: 0.3; pointer-events: none; }
+        @keyframes scan { 0% { top: 0; } 100% { top: 100dvh; } }
+
+        /* Desktop layout */
+        .desktop-layout { display: flex; flex-direction: column; height: 100dvh; position: relative; z-index: 10; }
+        .header { text-align: center; padding: 12px 20px; border-bottom: 1px solid rgba(0, 212, 255, 0.3); flex-shrink: 0; }
+        .header h1 { font-size: clamp(1.5em, 4vw, 2.5em); letter-spacing: 0.5em; text-transform: uppercase; text-shadow: 0 0 30px #00d4ff; animation: pulse 2s ease-in-out infinite; }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
-        .header p { font-size: 0.7em; letter-spacing: 0.3em; color: rgba(0, 212, 255, 0.6); margin-top: 5px; }
-        .panel-left { border: 1px solid rgba(0, 212, 255, 0.3); border-radius: 10px; padding: 15px; background: rgba(0, 212, 255, 0.03); overflow-y: auto; }
-        .panel-title { font-size: 0.7em; letter-spacing: 0.3em; color: rgba(0, 212, 255, 0.6); margin-bottom: 15px; text-transform: uppercase; }
-        .status-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(0, 212, 255, 0.1); font-size: 0.75em; }
-        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #00ff88; box-shadow: 0 0 10px #00ff88; animation: blink 1.5s ease-in-out infinite; }
+        .header p { font-size: clamp(0.5em, 1.5vw, 0.7em); letter-spacing: 0.2em; color: rgba(0, 212, 255, 0.6); margin-top: 3px; }
+        .main-area { display: flex; flex: 1; min-height: 0; gap: 15px; padding: 15px; }
+
+        /* Panels */
+        .panel { border: 1px solid rgba(0, 212, 255, 0.3); border-radius: 10px; padding: 12px; background: rgba(0, 212, 255, 0.03); }
+        .panel-title { font-size: 0.65em; letter-spacing: 0.3em; color: rgba(0, 212, 255, 0.6); margin-bottom: 12px; text-transform: uppercase; }
+        .panel-left { width: 200px; flex-shrink: 0; overflow-y: auto; }
+        .panel-right { width: 200px; flex-shrink: 0; overflow-y: auto; }
+        .panel-center { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+
+        /* Status items */
+        .status-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid rgba(0, 212, 255, 0.1); font-size: 0.7em; }
+        .status-dot { width: 7px; height: 7px; border-radius: 50%; background: #00ff88; box-shadow: 0 0 8px #00ff88; animation: blink 1.5s ease-in-out infinite; flex-shrink: 0; }
         @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-        .panel-center { border: 1px solid rgba(0, 212, 255, 0.3); border-radius: 10px; padding: 15px; background: rgba(0, 212, 255, 0.03); display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
-        .face-container { display: flex; justify-content: center; align-items: center; flex-shrink: 0; margin-bottom: 8px; }
+
+        /* Metrics */
+        .metric { margin-bottom: 8px; }
+        .metric-label { display: flex; justify-content: space-between; font-size: 0.68em; margin-bottom: 3px; color: rgba(0, 212, 255, 0.8); }
+        .metric-bar { height: 3px; background: rgba(0, 212, 255, 0.1); border-radius: 2px; overflow: hidden; }
+        .metric-fill { height: 100%; background: linear-gradient(90deg, #00d4ff, #00ff88); border-radius: 2px; transition: width 1s ease; }
+
+        /* Face */
+        .face-container { display: flex; justify-content: center; flex-shrink: 0; margin-bottom: 8px; }
         .face-container iframe { border: 1px solid rgba(0, 212, 255, 0.2); border-radius: 50%; background: #000; }
-        .chat-messages { flex: 1; overflow-y: auto; padding: 10px; scrollbar-width: thin; scrollbar-color: rgba(0, 212, 255, 0.3) transparent; min-height: 0; }
-        .message { margin-bottom: 12px; animation: fadeIn 0.3s ease; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .message .sender { font-size: 0.7em; letter-spacing: 0.2em; margin-bottom: 3px; color: rgba(0, 212, 255, 0.6); }
+
+        /* Chat */
+        .chat-messages { flex: 1; overflow-y: auto; padding: 8px; scrollbar-width: thin; scrollbar-color: rgba(0, 212, 255, 0.3) transparent; min-height: 0; }
+        .message { margin-bottom: 10px; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        .message .sender { font-size: 0.65em; letter-spacing: 0.15em; margin-bottom: 3px; color: rgba(0, 212, 255, 0.6); }
         .message.axiom .sender { color: #00ff88; }
         .message.alert .sender { color: #ff4444; }
         .message.alpha .sender { color: #00d4ff; }
         .message.beta .sender { color: #ff88ff; }
         .message.gamma .sender { color: #ffaa00; }
         .message.synthesis .sender { color: #00ff88; }
-        .message .text { font-size: 0.82em; line-height: 1.5; padding: 8px 12px; border-left: 2px solid rgba(0, 212, 255, 0.3); }
+        .message .text { font-size: 0.82em; line-height: 1.5; padding: 8px 10px; border-left: 2px solid rgba(0, 212, 255, 0.3); }
         .message.axiom .text { border-left-color: #00ff88; }
         .message.alert .text { border-left-color: #ff4444; }
         .message.alpha .text { border-left-color: #00d4ff; }
         .message.beta .text { border-left-color: #ff88ff; }
         .message.gamma .text { border-left-color: #ffaa00; }
         .message.synthesis .text { border-left-color: #00ff88; }
-        .chat-input { display: flex; gap: 8px; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(0, 212, 255, 0.2); flex-shrink: 0; }
-        .chat-input input { flex: 1; background: rgba(0, 212, 255, 0.05); border: 1px solid rgba(0, 212, 255, 0.3); border-radius: 5px; padding: 8px 12px; color: #00d4ff; font-family: 'Courier New', monospace; font-size: 0.85em; outline: none; }
-        .chat-input input:focus { border-color: #00d4ff; box-shadow: 0 0 15px rgba(0, 212, 255, 0.2); }
-        .chat-input button { background: rgba(0, 212, 255, 0.1); border: 1px solid rgba(0, 212, 255, 0.5); border-radius: 5px; padding: 8px 12px; color: #00d4ff; font-family: 'Courier New', monospace; cursor: pointer; letter-spacing: 0.1em; transition: all 0.3s; flex-shrink: 0; font-size: 0.82em; }
-        .chat-input button:hover { background: rgba(0, 212, 255, 0.2); box-shadow: 0 0 20px rgba(0, 212, 255, 0.3); }
-        .mic-btn { background: rgba(0, 255, 136, 0.1); border: 1px solid rgba(0, 255, 136, 0.5); border-radius: 5px; padding: 8px 12px; color: #00ff88; cursor: pointer; transition: all 0.3s; flex-shrink: 0; font-size: 1em; }
-        .mic-btn.listening { background: rgba(255, 68, 68, 0.2); border-color: #ff4444; color: #ff4444; box-shadow: 0 0 20px rgba(255, 68, 68, 0.5); animation: micPulse 0.5s ease-in-out infinite; }
-        .mic-btn.speaking { background: rgba(0, 212, 255, 0.2); border-color: #00d4ff; color: #00d4ff; box-shadow: 0 0 20px rgba(0, 212, 255, 0.5); animation: micPulse 0.5s ease-in-out infinite; }
-        @keyframes micPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-        .stop-btn { background: rgba(255, 68, 68, 0.1); border: 1px solid rgba(255, 68, 68, 0.5); border-radius: 5px; padding: 8px 12px; color: #ff4444; cursor: pointer; transition: all 0.3s; flex-shrink: 0; display: none; }
-        .stop-btn.visible { display: block; }
-        .debate-btn { background: rgba(255, 136, 255, 0.1); border: 1px solid rgba(255, 136, 255, 0.5); border-radius: 5px; padding: 8px 12px; color: #ff88ff; cursor: pointer; transition: all 0.3s; flex-shrink: 0; font-size: 0.82em; font-family: 'Courier New', monospace; letter-spacing: 0.1em; }
-        .debate-btn:hover { background: rgba(255, 136, 255, 0.2); box-shadow: 0 0 20px rgba(255, 136, 255, 0.3); }
-        .panel-right { border: 1px solid rgba(0, 212, 255, 0.3); border-radius: 10px; padding: 15px; background: rgba(0, 212, 255, 0.03); overflow-y: auto; }
-        .waveform { display: flex; align-items: center; justify-content: center; gap: 3px; height: 40px; margin: 10px 0; }
-        .wave-bar { width: 3px; background: #00d4ff; border-radius: 3px; animation: wave 1s ease-in-out infinite; box-shadow: 0 0 5px #00d4ff; }
-        .wave-bar:nth-child(2) { animation-delay: 0.1s; } .wave-bar:nth-child(3) { animation-delay: 0.2s; } .wave-bar:nth-child(4) { animation-delay: 0.3s; } .wave-bar:nth-child(5) { animation-delay: 0.4s; } .wave-bar:nth-child(6) { animation-delay: 0.3s; } .wave-bar:nth-child(7) { animation-delay: 0.2s; } .wave-bar:nth-child(8) { animation-delay: 0.1s; }
-        @keyframes wave { 0%, 100% { height: 5px; } 50% { height: 30px; } }
-        .wave-bar.idle { animation: none; height: 5px; }
-        .metric { margin-bottom: 10px; }
-        .metric-label { display: flex; justify-content: space-between; font-size: 0.72em; margin-bottom: 4px; color: rgba(0, 212, 255, 0.8); }
-        .metric-bar { height: 4px; background: rgba(0, 212, 255, 0.1); border-radius: 2px; overflow: hidden; }
-        .metric-fill { height: 100%; background: linear-gradient(90deg, #00d4ff, #00ff88); border-radius: 2px; box-shadow: 0 0 10px #00d4ff; transition: width 1s ease; }
-        .footer { grid-column: 1 / -1; text-align: center; font-size: 0.65em; color: rgba(0, 212, 255, 0.3); letter-spacing: 0.3em; padding: 5px; }
-        .scan-line { position: fixed; top: 0; left: 0; width: 100%; height: 2px; background: linear-gradient(90deg, transparent, #00d4ff, transparent); animation: scan 4s linear infinite; opacity: 0.3; }
-        @keyframes scan { 0% { top: 0; } 100% { top: 100vh; } }
-        .thinking { display: none; color: #00ff88; font-size: 0.75em; letter-spacing: 0.2em; animation: pulse 0.5s ease-in-out infinite; padding: 3px 0; flex-shrink: 0; }
-        .voice-status { font-size: 0.68em; color: rgba(0, 255, 136, 0.6); text-align: center; padding: 2px 0; flex-shrink: 0; min-height: 16px; }
-        .conversation-mode { display: flex; align-items: center; gap: 8px; font-size: 0.68em; color: rgba(0, 212, 255, 0.6); flex-shrink: 0; padding: 3px 0; }
-        .toggle { width: 36px; height: 18px; background: rgba(0, 212, 255, 0.1); border: 1px solid rgba(0, 212, 255, 0.3); border-radius: 9px; cursor: pointer; position: relative; transition: all 0.3s; }
+
+        /* Input area */
+        .input-area { flex-shrink: 0; padding-top: 8px; border-top: 1px solid rgba(0, 212, 255, 0.2); }
+        .thinking { display: none; color: #00ff88; font-size: 0.72em; letter-spacing: 0.2em; animation: pulse 0.5s ease-in-out infinite; padding: 3px 0; }
+        .voice-status { font-size: 0.65em; color: rgba(0, 255, 136, 0.6); padding: 2px 0; min-height: 14px; }
+        .conv-mode { display: flex; align-items: center; gap: 8px; font-size: 0.65em; color: rgba(0, 212, 255, 0.6); padding: 3px 0; }
+        .toggle { width: 32px; height: 16px; background: rgba(0, 212, 255, 0.1); border: 1px solid rgba(0, 212, 255, 0.3); border-radius: 8px; cursor: pointer; position: relative; transition: all 0.3s; flex-shrink: 0; }
         .toggle.on { background: rgba(0, 255, 136, 0.3); border-color: #00ff88; }
-        .toggle::after { content: ''; position: absolute; width: 12px; height: 12px; background: #00d4ff; border-radius: 50%; top: 2px; left: 2px; transition: all 0.3s; }
-        .toggle.on::after { left: 20px; background: #00ff88; }
+        .toggle::after { content: ''; position: absolute; width: 10px; height: 10px; background: #00d4ff; border-radius: 50%; top: 2px; left: 2px; transition: all 0.3s; }
+        .toggle.on::after { left: 18px; background: #00ff88; }
+        .buttons { display: flex; gap: 6px; margin-top: 6px; }
+        .chat-input { flex: 1; background: rgba(0, 212, 255, 0.05); border: 1px solid rgba(0, 212, 255, 0.3); border-radius: 8px; padding: 10px 12px; color: #00d4ff; font-family: 'Courier New', monospace; font-size: 0.88em; outline: none; min-width: 0; }
+        .chat-input:focus { border-color: #00d4ff; }
+        .btn { background: rgba(0, 212, 255, 0.1); border: 1px solid rgba(0, 212, 255, 0.5); border-radius: 8px; padding: 10px 12px; color: #00d4ff; font-family: 'Courier New', monospace; cursor: pointer; transition: all 0.3s; flex-shrink: 0; font-size: 0.82em; white-space: nowrap; }
+        .btn:hover { background: rgba(0, 212, 255, 0.2); }
+        .btn:active { transform: scale(0.95); }
+        .mic-btn { background: rgba(0, 255, 136, 0.1); border-color: rgba(0, 255, 136, 0.5); color: #00ff88; font-size: 1em; padding: 10px 14px; }
+        .mic-btn.listening { background: rgba(255, 68, 68, 0.2); border-color: #ff4444; color: #ff4444; animation: micPulse 0.5s infinite; }
+        .mic-btn.speaking { background: rgba(0, 212, 255, 0.2); border-color: #00d4ff; color: #00d4ff; animation: micPulse 0.5s infinite; }
+        @keyframes micPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .stop-btn { background: rgba(255, 68, 68, 0.1); border-color: rgba(255, 68, 68, 0.5); color: #ff4444; display: none; }
+        .stop-btn.visible { display: block; }
+        .debate-btn { background: rgba(255, 136, 255, 0.1); border-color: rgba(255, 136, 255, 0.5); color: #ff88ff; }
+        .send-btn { background: rgba(0, 212, 255, 0.15); border-color: rgba(0, 212, 255, 0.6); }
+
+        /* Waveform */
+        .waveform { display: flex; align-items: center; justify-content: center; gap: 3px; height: 35px; margin: 8px 0; }
+        .wave-bar { width: 3px; background: #00d4ff; border-radius: 3px; animation: wave 1s ease-in-out infinite; }
+        .wave-bar:nth-child(2) { animation-delay: 0.1s; } .wave-bar:nth-child(3) { animation-delay: 0.2s; } .wave-bar:nth-child(4) { animation-delay: 0.3s; } .wave-bar:nth-child(5) { animation-delay: 0.4s; } .wave-bar:nth-child(6) { animation-delay: 0.3s; } .wave-bar:nth-child(7) { animation-delay: 0.2s; } .wave-bar:nth-child(8) { animation-delay: 0.1s; }
+        @keyframes wave { 0%, 100% { height: 4px; } 50% { height: 28px; } }
+        .wave-bar.idle { animation: none; height: 4px; }
+
+        /* Footer */
+        .footer { text-align: center; font-size: 0.55em; color: rgba(0, 212, 255, 0.25); letter-spacing: 0.2em; padding: 6px; flex-shrink: 0; }
+
+        /* Debate separator */
+        .debate-sep { text-align: center; font-size: 0.6em; color: rgba(255, 136, 255, 0.5); letter-spacing: 0.3em; padding: 6px 0; border-top: 1px solid rgba(255, 136, 255, 0.2); border-bottom: 1px solid rgba(255, 136, 255, 0.2); margin: 6px 0; }
+
+        /* Alert flash */
         .alert-flash { animation: alertFlash 0.5s ease-in-out 3; }
         @keyframes alertFlash { 0%, 100% { border-color: rgba(0, 212, 255, 0.3); } 50% { border-color: #ff4444; box-shadow: 0 0 20px rgba(255, 68, 68, 0.5); } }
-        .debate-separator { text-align: center; font-size: 0.65em; color: rgba(255, 136, 255, 0.5); letter-spacing: 0.3em; padding: 8px 0; border-top: 1px solid rgba(255, 136, 255, 0.2); border-bottom: 1px solid rgba(255, 136, 255, 0.2); margin: 8px 0; }
+
+        /* MOBILE LAYOUT */
+        @media (max-width: 768px) {
+            .panel-left, .panel-right { display: none; }
+            .main-area { padding: 8px; gap: 0; }
+            .panel-center { border-radius: 10px; padding: 10px; }
+            .header { padding: 8px 12px; }
+            .header h1 { font-size: 1.8em; letter-spacing: 0.3em; }
+            .header p { display: none; }
+            .face-container iframe { width: 120px; height: 120px; }
+            .chat-input { font-size: 16px; } /* Prevents zoom on iOS */
+            .buttons { flex-wrap: wrap; }
+            .btn { padding: 12px 10px; font-size: 0.78em; }
+            .mic-btn { padding: 12px 16px; font-size: 1.1em; }
+
+            /* Mobile bottom nav */
+            .mobile-nav { display: flex; justify-content: space-around; padding: 8px; border-top: 1px solid rgba(0, 212, 255, 0.2); flex-shrink: 0; }
+            .mobile-nav-btn { background: none; border: none; color: rgba(0, 212, 255, 0.5); font-size: 0.65em; text-align: center; cursor: pointer; padding: 4px 8px; font-family: 'Courier New', monospace; letter-spacing: 0.1em; }
+            .mobile-nav-btn.active { color: #00d4ff; }
+        }
+
+        @media (min-width: 769px) {
+            .mobile-nav { display: none; }
+        }
+
+        /* Mobile stats overlay */
+        .mobile-stats { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 100; padding: 20px; overflow-y: auto; }
+        .mobile-stats.visible { display: block; }
+        .mobile-stats-close { position: absolute; top: 15px; right: 15px; background: none; border: 1px solid rgba(0,212,255,0.3); color: #00d4ff; padding: 6px 12px; cursor: pointer; font-family: 'Courier New', monospace; border-radius: 5px; }
     </style>
 </head>
 <body>
     <div class="grid-bg"></div>
     <div class="scan-line"></div>
-    <div class="container">
-        <div class="header">
-            <h1>AXIOM</h1>
-            <p>ADAPTIVE EXPERIMENTAL INTELLIGENCE OPERATING MACHINE — BUILD 1.0</p>
-        </div>
-        <div class="panel-left">
+
+    <!-- Mobile Stats Overlay -->
+    <div class="mobile-stats" id="mobile-stats">
+        <button class="mobile-stats-close" onclick="toggleMobileStats()">✕ CLOSE</button>
+        <div style="margin-top: 40px;">
             <div class="panel-title">⬡ System Status</div>
             <div class="status-item"><span>AI BRAIN</span><div class="status-dot"></div></div>
             <div class="status-item"><span>MEMORY</span><div class="status-dot"></div></div>
@@ -95,61 +149,112 @@
             <div class="status-item"><span>JETSON EDGE</span><div class="status-dot"></div></div>
             <div class="status-item"><span>SECURITY</span><div class="status-dot"></div></div>
             <div class="status-item"><span>MONITORING</span><div class="status-dot"></div></div>
-            <div style="margin-top: 15px;">
+            <div style="margin-top: 20px;">
                 <div class="panel-title">⬡ Performance</div>
-                <div class="metric"><div class="metric-label"><span>CPU</span><span id="cpu-val">--</span></div><div class="metric-bar"><div class="metric-fill" id="cpu-bar" style="width:0%"></div></div></div>
-                <div class="metric"><div class="metric-label"><span>MEMORY</span><span id="mem-val">--</span></div><div class="metric-bar"><div class="metric-fill" id="mem-bar" style="width:0%"></div></div></div>
-                <div class="metric"><div class="metric-label"><span>DISK</span><span id="disk-val">--</span></div><div class="metric-bar"><div class="metric-fill" id="disk-bar" style="width:0%"></div></div></div>
+                <div class="metric"><div class="metric-label"><span>CPU</span><span id="cpu-val-m">--</span></div><div class="metric-bar"><div class="metric-fill" id="cpu-bar-m" style="width:0%"></div></div></div>
+                <div class="metric"><div class="metric-label"><span>MEMORY</span><span id="mem-val-m">--</span></div><div class="metric-bar"><div class="metric-fill" id="mem-bar-m" style="width:0%"></div></div></div>
+                <div class="metric"><div class="metric-label"><span>DISK</span><span id="disk-val-m">--</span></div><div class="metric-bar"><div class="metric-fill" id="disk-bar-m" style="width:0%"></div></div></div>
+            </div>
+            <div style="margin-top: 20px;">
+                <div class="panel-title">⬡ System Info</div>
+                <div class="status-item"><span>VERSION</span><span style="color:#00ff88;">1.0.0</span></div>
+                <div class="status-item"><span>BUILDER</span><span style="color:#00ff88;">CLASSIFIED</span></div>
+                <div class="status-item"><span>EDGE DEVICE</span><span style="color:#00ff88;">JETSON ORIN</span></div>
+                <div class="status-item"><span>CLOUD</span><span style="color:#00ff88;">DIGITALOCEAN</span></div>
+                <div class="status-item"><span>ORCHESTRATION</span><span style="color:#00ff88;">K8S</span></div>
             </div>
         </div>
-        <div class="panel-center" id="main-panel">
-            <div class="panel-title" style="flex-shrink:0;">⬡ AXIOM Interface</div>
-            <div class="face-container">
-                <iframe id="face-frame" src="/face" width="160" height="160" frameborder="0" scrolling="no"></iframe>
-            </div>
-            <div class="chat-messages" id="chat-messages">
-                <div class="message axiom">
-                    <div class="sender">AXIOM //</div>
-                    <div class="text">AXIOM online. All systems operational. How can I assist you, Sir?</div>
-                </div>
-            </div>
-            <div class="thinking" id="thinking">AXIOM PROCESSING...</div>
-            <div class="voice-status" id="voice-status"></div>
-            <div class="conversation-mode">
-                <div class="toggle" id="conv-toggle" onclick="toggleConversationMode()"></div>
-                <span id="conv-label">CONVERSATION MODE OFF</span>
-            </div>
-            <div class="chat-input">
-                <input type="text" id="user-input" placeholder="Enter command or press 🎤 to speak..." onkeypress="handleKey(event)">
-                <button class="mic-btn" id="mic-btn" onclick="toggleVoice()">🎤</button>
-                <button class="stop-btn" id="stop-btn" onclick="stopSpeaking()">⏹</button>
-                <button class="debate-btn" onclick="startDebate()" title="Multi-agent debate">⚡ DEBATE</button>
-                <button onclick="sendMessage()">SEND</button>
-            </div>
-        </div>
-        <div class="panel-right">
-            <div class="panel-title">⬡ Voice Activity</div>
-            <div class="waveform" id="waveform">
-                <div class="wave-bar idle"></div><div class="wave-bar idle"></div><div class="wave-bar idle"></div><div class="wave-bar idle"></div><div class="wave-bar idle"></div><div class="wave-bar idle"></div><div class="wave-bar idle"></div><div class="wave-bar idle"></div>
-            </div>
-            <div class="panel-title" style="margin-top: 12px;">⬡ System Info</div>
-            <div class="status-item"><span>VERSION</span><span style="color:#00ff88;">1.0.0</span></div>
-            <div class="status-item"><span>BUILDER</span><span style="color:#00ff88;">CLASSIFIED</span></div>
-            <div class="status-item"><span>DEPLOYMENT</span><span style="color:#00ff88;">HYBRID</span></div>
-            <div class="status-item"><span>EDGE DEVICE</span><span style="color:#00ff88;">JETSON ORIN</span></div>
-            <div class="status-item"><span>CLOUD</span><span style="color:#00ff88;">DIGITALOCEAN</span></div>
-            <div class="status-item"><span>ORCHESTRATION</span><span style="color:#00ff88;">K8S</span></div>
-            <div style="margin-top: 15px;">
-                <div class="panel-title">⬡ Recent Activity</div>
-                <div id="activity-log" style="font-size:0.72em;color:rgba(0,212,255,0.6);">
-                    <div style="padding:5px 0;border-bottom:1px solid rgba(0,212,255,0.1);">System initialized</div>
-                    <div style="padding:5px 0;border-bottom:1px solid rgba(0,212,255,0.1);">Memory loaded</div>
-                    <div style="padding:5px 0;">All services online</div>
-                </div>
-            </div>
-        </div>
-        <div class="footer">AXIOM — DEFENSE GRADE EDGE-CLOUD HYBRID AI — BUILT BY ROBAIR FARAG — ALL SYSTEMS NOMINAL</div>
     </div>
+
+    <div class="desktop-layout">
+        <div class="header">
+            <h1>AXIOM</h1>
+            <p>ADAPTIVE EXPERIMENTAL INTELLIGENCE OPERATING MACHINE — BUILD 1.0</p>
+        </div>
+
+        <div class="main-area">
+            <!-- Left Panel — Desktop Only -->
+            <div class="panel panel-left">
+                <div class="panel-title">⬡ System Status</div>
+                <div class="status-item"><span>AI BRAIN</span><div class="status-dot"></div></div>
+                <div class="status-item"><span>MEMORY</span><div class="status-dot"></div></div>
+                <div class="status-item"><span>VOICE</span><div class="status-dot"></div></div>
+                <div class="status-item"><span>WEB SEARCH</span><div class="status-dot"></div></div>
+                <div class="status-item"><span>KUBERNETES</span><div class="status-dot"></div></div>
+                <div class="status-item"><span>JETSON EDGE</span><div class="status-dot"></div></div>
+                <div class="status-item"><span>SECURITY</span><div class="status-dot"></div></div>
+                <div class="status-item"><span>MONITORING</span><div class="status-dot"></div></div>
+                <div style="margin-top: 15px;">
+                    <div class="panel-title">⬡ Performance</div>
+                    <div class="metric"><div class="metric-label"><span>CPU</span><span id="cpu-val">--</span></div><div class="metric-bar"><div class="metric-fill" id="cpu-bar" style="width:0%"></div></div></div>
+                    <div class="metric"><div class="metric-label"><span>MEMORY</span><span id="mem-val">--</span></div><div class="metric-bar"><div class="metric-fill" id="mem-bar" style="width:0%"></div></div></div>
+                    <div class="metric"><div class="metric-label"><span>DISK</span><span id="disk-val">--</span></div><div class="metric-bar"><div class="metric-fill" id="disk-bar" style="width:0%"></div></div></div>
+                </div>
+            </div>
+
+            <!-- Center Panel -->
+            <div class="panel panel-center" id="main-panel">
+                <div class="panel-title" style="flex-shrink:0;">⬡ AXIOM Interface</div>
+                <div class="face-container">
+                    <iframe id="face-frame" src="/face" width="150" height="150" frameborder="0" scrolling="no"></iframe>
+                </div>
+                <div class="chat-messages" id="chat-messages">
+                    <div class="message axiom">
+                        <div class="sender">AXIOM //</div>
+                        <div class="text">AXIOM online. All systems operational. How can I assist you, Sir?</div>
+                    </div>
+                </div>
+                <div class="input-area">
+                    <div class="thinking" id="thinking">AXIOM PROCESSING...</div>
+                    <div class="voice-status" id="voice-status"></div>
+                    <div class="conv-mode">
+                        <div class="toggle" id="conv-toggle" onclick="toggleConversationMode()"></div>
+                        <span id="conv-label">CONVERSATION MODE OFF</span>
+                    </div>
+                    <div class="buttons">
+                        <input type="text" class="chat-input" id="user-input" placeholder="Ask AXIOM anything..." onkeypress="handleKey(event)">
+                        <button class="btn mic-btn" id="mic-btn" onclick="toggleVoice()">🎤</button>
+                        <button class="btn stop-btn" id="stop-btn" onclick="stopSpeaking()">⏹</button>
+                        <button class="btn debate-btn" onclick="startDebate()">⚡</button>
+                        <button class="btn send-btn" onclick="sendMessage()">SEND</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel — Desktop Only -->
+            <div class="panel panel-right">
+                <div class="panel-title">⬡ Voice Activity</div>
+                <div class="waveform" id="waveform">
+                    <div class="wave-bar idle"></div><div class="wave-bar idle"></div><div class="wave-bar idle"></div><div class="wave-bar idle"></div><div class="wave-bar idle"></div><div class="wave-bar idle"></div><div class="wave-bar idle"></div><div class="wave-bar idle"></div>
+                </div>
+                <div class="panel-title" style="margin-top: 10px;">⬡ System Info</div>
+                <div class="status-item"><span>VERSION</span><span style="color:#00ff88;">1.0.0</span></div>
+                <div class="status-item"><span>BUILDER</span><span style="color:#00ff88;">CLASSIFIED</span></div>
+                <div class="status-item"><span>DEPLOYMENT</span><span style="color:#00ff88;">HYBRID</span></div>
+                <div class="status-item"><span>EDGE DEVICE</span><span style="color:#00ff88;">JETSON ORIN</span></div>
+                <div class="status-item"><span>CLOUD</span><span style="color:#00ff88;">DIGITALOCEAN</span></div>
+                <div class="status-item"><span>ORCHESTRATION</span><span style="color:#00ff88;">K8S</span></div>
+                <div style="margin-top: 15px;">
+                    <div class="panel-title">⬡ Recent Activity</div>
+                    <div id="activity-log" style="font-size:0.68em;color:rgba(0,212,255,0.6);">
+                        <div style="padding:4px 0;border-bottom:1px solid rgba(0,212,255,0.1);">System initialized</div>
+                        <div style="padding:4px 0;border-bottom:1px solid rgba(0,212,255,0.1);">Memory loaded</div>
+                        <div style="padding:4px 0;">All services online</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">AXIOM — DEFENSE GRADE EDGE-CLOUD HYBRID AI — BUILT BY ROBAIR FARAG — ALL SYSTEMS NOMINAL</div>
+
+        <!-- Mobile Bottom Nav -->
+        <div class="mobile-nav">
+            <button class="mobile-nav-btn active" onclick="showMobileChat()">💬 CHAT</button>
+            <button class="mobile-nav-btn" onclick="toggleMobileStats()">📊 STATS</button>
+            <button class="mobile-nav-btn" onclick="startDebate()">⚡ DEBATE</button>
+        </div>
+    </div>
+
     <script>
         const API_URL = '';
         let token = '';
@@ -163,17 +268,21 @@
             try { faceFrame.contentWindow.postMessage(state, '*'); } catch(e) {}
         }
 
+        function toggleMobileStats() {
+            document.getElementById('mobile-stats').classList.toggle('visible');
+        }
+
+        function showMobileChat() {
+            document.getElementById('mobile-stats').classList.remove('visible');
+        }
+
         function toggleConversationMode() {
             conversationMode = !conversationMode;
-            const toggle = document.getElementById('conv-toggle');
-            const label = document.getElementById('conv-label');
+            document.getElementById('conv-toggle').classList.toggle('on', conversationMode);
+            document.getElementById('conv-label').textContent = conversationMode ? 'CONVERSATION MODE ON' : 'CONVERSATION MODE OFF';
             if (conversationMode) {
-                toggle.classList.add('on');
-                label.textContent = 'CONVERSATION MODE ON';
                 document.getElementById('voice-status').textContent = '🟢 READY — CLICK MIC TO START';
             } else {
-                toggle.classList.remove('on');
-                label.textContent = 'CONVERSATION MODE OFF';
                 document.getElementById('voice-status').textContent = '';
                 stopSpeaking();
             }
@@ -194,23 +303,16 @@
                     activateWaveform();
                 };
                 recognition.onresult = (event) => {
-                    let interim = '';
-                    let final = '';
+                    let interim = '', final = '';
                     for (let i = event.resultIndex; i < event.results.length; i++) {
-                        if (event.results[i].isFinal) { final += event.results[i][0].transcript; }
-                        else { interim += event.results[i][0].transcript; }
+                        if (event.results[i].isFinal) final += event.results[i][0].transcript;
+                        else interim += event.results[i][0].transcript;
                     }
                     document.getElementById('user-input').value = final || interim;
-                    if (final) {
-                        document.getElementById('voice-status').textContent = '✅ SENDING...';
-                        setTimeout(() => sendMessage(), 200);
-                    }
+                    if (final) { document.getElementById('voice-status').textContent = '✅ SENDING...'; setTimeout(() => sendMessage(), 200); }
                 };
-                recognition.onerror = (event) => {
-                    document.getElementById('voice-status').textContent = '⚠️ ' + event.error;
-                    stopListening();
-                };
-                recognition.onend = () => { stopListening(); };
+                recognition.onerror = (e) => { document.getElementById('voice-status').textContent = '⚠️ ' + e.error; stopListening(); };
+                recognition.onend = () => stopListening();
             } else {
                 document.getElementById('mic-btn').style.display = 'none';
             }
@@ -218,7 +320,7 @@
 
         function toggleVoice() {
             if (!recognition) return;
-            if (isListening) { recognition.stop(); }
+            if (isListening) recognition.stop();
             else { stopSpeaking(); recognition.start(); }
         }
 
@@ -231,11 +333,7 @@
         }
 
         function stopSpeaking() {
-            if (currentAudio) {
-                currentAudio.pause();
-                currentAudio.currentTime = 0;
-                currentAudio = null;
-            }
+            if (currentAudio) { currentAudio.pause(); currentAudio.currentTime = 0; currentAudio = null; }
             notifyFace('stopped');
             document.getElementById('mic-btn').classList.remove('speaking');
             document.getElementById('mic-btn').textContent = '🎤';
@@ -258,70 +356,19 @@
                 });
                 const data = await res.json();
                 if (data.audio) {
-                    const audioBytes = atob(data.audio);
-                    const arrayBuffer = new ArrayBuffer(audioBytes.length);
-                    const view = new Uint8Array(arrayBuffer);
-                    for (let i = 0; i < audioBytes.length; i++) { view[i] = audioBytes.charCodeAt(i); }
-                    const blob = new Blob([arrayBuffer], { type: 'audio/mpeg' });
-                    const url = URL.createObjectURL(blob);
-                    currentAudio = new Audio(url);
+                    const bytes = atob(data.audio);
+                    const buf = new ArrayBuffer(bytes.length);
+                    const view = new Uint8Array(buf);
+                    for (let i = 0; i < bytes.length; i++) view[i] = bytes.charCodeAt(i);
+                    const blob = new Blob([buf], { type: 'audio/mpeg' });
+                    currentAudio = new Audio(URL.createObjectURL(blob));
                     currentAudio.play();
                     currentAudio.onended = () => {
                         stopSpeaking();
                         if (conversationMode) document.getElementById('voice-status').textContent = '🟢 YOUR TURN — CLICK MIC TO SPEAK';
                     };
                 }
-            } catch (e) { console.log('TTS error:', e); stopSpeaking(); }
-        }
-
-        async function startDebate() {
-            const input = document.getElementById('user-input');
-            const question = input.value.trim();
-            if (!question) {
-                document.getElementById('voice-status').textContent = '⚠️ TYPE A QUESTION FIRST THEN CLICK DEBATE';
-                return;
-            }
-            input.value = '';
-            if (!token) await authenticate();
-
-            addMessage('YOU', question, 'user');
-            const sep = document.createElement('div');
-            sep.className = 'debate-separator';
-            sep.textContent = '⚡ MULTI-AGENT DEBATE INITIATED ⚡';
-            document.getElementById('chat-messages').appendChild(sep);
-            document.getElementById('chat-messages').scrollTop = document.getElementById('chat-messages').scrollHeight;
-
-            document.getElementById('thinking').style.display = 'block';
-            document.getElementById('voice-status').textContent = '⚡ 3 AGENTS DEBATING...';
-
-            try {
-                const res = await fetch(`${API_URL}/debate`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                    body: JSON.stringify({ question })
-                });
-                const data = await res.json();
-                document.getElementById('thinking').style.display = 'none';
-
-                addMessage('AXIOM ALPHA // ANALYTICAL', data.alpha, 'alpha');
-                await new Promise(r => setTimeout(r, 500));
-                addMessage('AXIOM BETA // CREATIVE', data.beta, 'beta');
-                await new Promise(r => setTimeout(r, 500));
-                addMessage('AXIOM GAMMA // CRITICAL', data.gamma, 'gamma');
-                await new Promise(r => setTimeout(r, 500));
-
-                const finalSep = document.createElement('div');
-                finalSep.className = 'debate-separator';
-                finalSep.textContent = '⚡ SYNTHESIS ⚡';
-                document.getElementById('chat-messages').appendChild(finalSep);
-
-                addMessage('AXIOM // UNIFIED', data.synthesis, 'synthesis');
-                addActivity('⚡ Multi-agent debate complete');
-                await speak(data.synthesis);
-            } catch (e) {
-                addMessage('AXIOM', 'Debate error: ' + e.message, 'axiom');
-                document.getElementById('thinking').style.display = 'none';
-            }
+            } catch (e) { stopSpeaking(); }
         }
 
         async function authenticate() {
@@ -334,7 +381,7 @@
                 const data = await res.json();
                 token = data.token;
                 updateStats();
-            } catch (e) { console.log('Auth failed:', e); }
+            } catch (e) {}
         }
 
         async function sendMessage() {
@@ -364,6 +411,47 @@
             }
         }
 
+        async function startDebate() {
+            const input = document.getElementById('user-input');
+            const question = input.value.trim();
+            if (!question) { document.getElementById('voice-status').textContent = '⚠️ TYPE A QUESTION FIRST'; return; }
+            input.value = '';
+            if (!token) await authenticate();
+            addMessage('YOU', question, 'user');
+            const sep = document.createElement('div');
+            sep.className = 'debate-sep';
+            sep.textContent = '⚡ MULTI-AGENT DEBATE ⚡';
+            document.getElementById('chat-messages').appendChild(sep);
+            document.getElementById('chat-messages').scrollTop = 99999;
+            document.getElementById('thinking').style.display = 'block';
+            document.getElementById('voice-status').textContent = '⚡ 3 AGENTS DEBATING...';
+            try {
+                const res = await fetch(`${API_URL}/debate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ question })
+                });
+                const data = await res.json();
+                document.getElementById('thinking').style.display = 'none';
+                addMessage('AXIOM ALPHA // ANALYTICAL', data.alpha, 'alpha');
+                await new Promise(r => setTimeout(r, 400));
+                addMessage('AXIOM BETA // CREATIVE', data.beta, 'beta');
+                await new Promise(r => setTimeout(r, 400));
+                addMessage('AXIOM GAMMA // CRITICAL', data.gamma, 'gamma');
+                await new Promise(r => setTimeout(r, 400));
+                const finalSep = document.createElement('div');
+                finalSep.className = 'debate-sep';
+                finalSep.textContent = '⚡ SYNTHESIS ⚡';
+                document.getElementById('chat-messages').appendChild(finalSep);
+                addMessage('AXIOM // UNIFIED', data.synthesis, 'synthesis');
+                addActivity('⚡ Debate complete');
+                await speak(data.synthesis);
+            } catch (e) {
+                addMessage('AXIOM', 'Debate error: ' + e.message, 'axiom');
+                document.getElementById('thinking').style.display = 'none';
+            }
+        }
+
         function addMessage(sender, text, type) {
             const container = document.getElementById('chat-messages');
             const div = document.createElement('div');
@@ -375,8 +463,9 @@
 
         function addActivity(text) {
             const log = document.getElementById('activity-log');
+            if (!log) return;
             const div = document.createElement('div');
-            div.style.cssText = 'padding:5px 0;border-bottom:1px solid rgba(0,212,255,0.1);';
+            div.style.cssText = 'padding:4px 0;border-bottom:1px solid rgba(0,212,255,0.1);';
             div.textContent = text;
             log.insertBefore(div, log.firstChild);
             if (log.children.length > 5) log.removeChild(log.lastChild);
@@ -395,9 +484,22 @@
                 const cpuMatch = stats.match(/CPU is at ([\d.]+)%/);
                 const memMatch = stats.match(/Memory is at ([\d.]+)%/);
                 const diskMatch = stats.match(/Disk is at ([\d.]+)%/);
-                if (cpuMatch) { document.getElementById('cpu-val').textContent = cpuMatch[1] + '%'; document.getElementById('cpu-bar').style.width = cpuMatch[1] + '%'; }
-                if (memMatch) { document.getElementById('mem-val').textContent = memMatch[1] + '%'; document.getElementById('mem-bar').style.width = memMatch[1] + '%'; }
-                if (diskMatch) { document.getElementById('disk-val').textContent = diskMatch[1] + '%'; document.getElementById('disk-bar').style.width = diskMatch[1] + '%'; }
+                const sets = [
+                    ['cpu-val', 'cpu-bar', cpuMatch],
+                    ['cpu-val-m', 'cpu-bar-m', cpuMatch],
+                    ['mem-val', 'mem-bar', memMatch],
+                    ['mem-val-m', 'mem-bar-m', memMatch],
+                    ['disk-val', 'disk-bar', diskMatch],
+                    ['disk-val-m', 'disk-bar-m', diskMatch],
+                ];
+                sets.forEach(([valId, barId, match]) => {
+                    if (match) {
+                        const el = document.getElementById(valId);
+                        const bar = document.getElementById(barId);
+                        if (el) el.textContent = match[1] + '%';
+                        if (bar) bar.style.width = match[1] + '%';
+                    }
+                });
             } catch (e) {}
         }
 
@@ -407,13 +509,13 @@
                 const data = JSON.parse(event.data);
                 if (data.alert) {
                     addMessage('⚠️ AXIOM ALERT', data.alert, 'alert');
-                    addActivity('⚠️ Proactive alert fired');
+                    addActivity('⚠️ Alert fired');
                     document.getElementById('main-panel').classList.add('alert-flash');
                     setTimeout(() => document.getElementById('main-panel').classList.remove('alert-flash'), 2000);
                     if (token) await speak(data.alert);
                 }
             };
-            evtSource.onerror = () => { setTimeout(startAlertListener, 5000); };
+            evtSource.onerror = () => setTimeout(startAlertListener, 5000);
         }
 
         authenticate();
