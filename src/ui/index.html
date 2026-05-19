@@ -32,6 +32,10 @@
         .chat-input input:focus { border-color: #00d4ff; box-shadow: 0 0 15px rgba(0, 212, 255, 0.2); }
         .chat-input button { background: rgba(0, 212, 255, 0.1); border: 1px solid rgba(0, 212, 255, 0.5); border-radius: 5px; padding: 10px 20px; color: #00d4ff; font-family: 'Courier New', monospace; cursor: pointer; letter-spacing: 0.1em; transition: all 0.3s; flex-shrink: 0; }
         .chat-input button:hover { background: rgba(0, 212, 255, 0.2); box-shadow: 0 0 20px rgba(0, 212, 255, 0.3); }
+        .mic-btn { background: rgba(0, 255, 136, 0.1); border: 1px solid rgba(0, 255, 136, 0.5); border-radius: 5px; padding: 10px 15px; color: #00ff88; font-family: 'Courier New', monospace; cursor: pointer; transition: all 0.3s; flex-shrink: 0; font-size: 1.1em; }
+        .mic-btn:hover { background: rgba(0, 255, 136, 0.2); box-shadow: 0 0 20px rgba(0, 255, 136, 0.3); }
+        .mic-btn.listening { background: rgba(255, 68, 68, 0.2); border-color: #ff4444; color: #ff4444; box-shadow: 0 0 20px rgba(255, 68, 68, 0.5); animation: micPulse 0.5s ease-in-out infinite; }
+        @keyframes micPulse { 0%, 100% { box-shadow: 0 0 20px rgba(255, 68, 68, 0.5); } 50% { box-shadow: 0 0 40px rgba(255, 68, 68, 0.8); } }
         .panel-right { border: 1px solid rgba(0, 212, 255, 0.3); border-radius: 10px; padding: 15px; background: rgba(0, 212, 255, 0.03); overflow-y: auto; }
         .waveform { display: flex; align-items: center; justify-content: center; gap: 3px; height: 50px; margin: 15px 0; }
         .wave-bar { width: 3px; background: #00d4ff; border-radius: 3px; animation: wave 1s ease-in-out infinite; box-shadow: 0 0 5px #00d4ff; }
@@ -46,6 +50,7 @@
         .scan-line { position: fixed; top: 0; left: 0; width: 100%; height: 2px; background: linear-gradient(90deg, transparent, #00d4ff, transparent); animation: scan 4s linear infinite; opacity: 0.3; }
         @keyframes scan { 0% { top: 0; } 100% { top: 100vh; } }
         .thinking { display: none; color: #00ff88; font-size: 0.8em; letter-spacing: 0.2em; animation: pulse 0.5s ease-in-out infinite; padding: 5px 0; flex-shrink: 0; }
+        .voice-status { font-size: 0.7em; color: rgba(0, 255, 136, 0.6); text-align: center; padding: 3px 0; flex-shrink: 0; min-height: 18px; }
     </style>
 </head>
 <body>
@@ -82,14 +87,16 @@
                 </div>
             </div>
             <div class="thinking" id="thinking">AXIOM PROCESSING...</div>
+            <div class="voice-status" id="voice-status"></div>
             <div class="chat-input">
-                <input type="text" id="user-input" placeholder="Enter command..." onkeypress="handleKey(event)">
+                <input type="text" id="user-input" placeholder="Enter command or press 🎤 to speak..." onkeypress="handleKey(event)">
+                <button class="mic-btn" id="mic-btn" onclick="toggleVoice()" title="Hold to speak">🎤</button>
                 <button onclick="sendMessage()">SEND</button>
             </div>
         </div>
         <div class="panel-right">
             <div class="panel-title">⬡ Voice Activity</div>
-            <div class="waveform">
+            <div class="waveform" id="waveform">
                 <div class="wave-bar idle"></div><div class="wave-bar idle"></div><div class="wave-bar idle"></div><div class="wave-bar idle"></div><div class="wave-bar idle"></div><div class="wave-bar idle"></div><div class="wave-bar idle"></div><div class="wave-bar idle"></div>
             </div>
             <div class="panel-title" style="margin-top: 15px;">⬡ System Info</div>
@@ -113,6 +120,88 @@
     <script>
         const API_URL = '';
         let token = '';
+        let recognition = null;
+        let isListening = false;
+
+        // Initialize Web Speech API
+        function initSpeech() {
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                recognition = new SpeechRecognition();
+                recognition.continuous = false;
+                recognition.interimResults = true;
+                recognition.lang = 'en-US';
+
+                recognition.onstart = () => {
+                    isListening = true;
+                    document.getElementById('mic-btn').classList.add('listening');
+                    document.getElementById('voice-status').textContent = '🔴 LISTENING...';
+                    activateWaveform();
+                };
+
+                recognition.onresult = (event) => {
+                    let interim = '';
+                    let final = '';
+                    for (let i = event.resultIndex; i < event.results.length; i++) {
+                        if (event.results[i].isFinal) {
+                            final += event.results[i][0].transcript;
+                        } else {
+                            interim += event.results[i][0].transcript;
+                        }
+                    }
+                    document.getElementById('user-input').value = final || interim;
+                    if (final) {
+                        document.getElementById('voice-status').textContent = '✅ CAPTURED — SENDING...';
+                        setTimeout(() => sendMessage(), 300);
+                    }
+                };
+
+                recognition.onerror = (event) => {
+                    document.getElementById('voice-status').textContent = '⚠️ ' + event.error;
+                    stopListening();
+                };
+
+                recognition.onend = () => {
+                    stopListening();
+                };
+            } else {
+                document.getElementById('mic-btn').style.display = 'none';
+                document.getElementById('voice-status').textContent = 'Voice not supported in this browser';
+            }
+        }
+
+        function toggleVoice() {
+            if (!recognition) return;
+            if (isListening) {
+                recognition.stop();
+            } else {
+                recognition.start();
+            }
+        }
+
+        function stopListening() {
+            isListening = false;
+            document.getElementById('mic-btn').classList.remove('listening');
+            document.getElementById('voice-status').textContent = '';
+            deactivateWaveform();
+        }
+
+        // AXIOM speaks back using browser TTS
+        function speak(text) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.rate = 0.95;
+                utterance.pitch = 0.9;
+                utterance.volume = 1;
+                const voices = window.speechSynthesis.getVoices();
+                const preferred = voices.find(v => v.name.includes('Google') && v.lang === 'en-US') ||
+                                  voices.find(v => v.lang === 'en-US') ||
+                                  voices[0];
+                if (preferred) utterance.voice = preferred;
+                window.speechSynthesis.speak(utterance);
+            }
+        }
 
         async function authenticate() {
             try {
@@ -134,6 +223,7 @@
             addMessage('YOU', message, 'user');
             input.value = '';
             document.getElementById('thinking').style.display = 'block';
+            document.getElementById('voice-status').textContent = '';
             activateWaveform();
             if (!token) await authenticate();
             try {
@@ -145,6 +235,7 @@
                 const data = await res.json();
                 addMessage('AXIOM', data.response, 'axiom');
                 addActivity(`Chat: ${message.substring(0, 20)}...`);
+                speak(data.response);
             } catch (e) {
                 addMessage('AXIOM', 'Connection error: ' + e.message, 'axiom');
             }
@@ -190,7 +281,9 @@
         }
 
         authenticate();
+        initSpeech();
         setInterval(updateStats, 5000);
+        window.speechSynthesis.onvoiceschanged = () => {};
     </script>
 </body>
 </html>
