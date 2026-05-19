@@ -90,7 +90,7 @@
             <div class="voice-status" id="voice-status"></div>
             <div class="chat-input">
                 <input type="text" id="user-input" placeholder="Enter command or press 🎤 to speak..." onkeypress="handleKey(event)">
-                <button class="mic-btn" id="mic-btn" onclick="toggleVoice()" title="Hold to speak">🎤</button>
+                <button class="mic-btn" id="mic-btn" onclick="toggleVoice()" title="Click to speak">🎤</button>
                 <button onclick="sendMessage()">SEND</button>
             </div>
         </div>
@@ -123,7 +123,6 @@
         let recognition = null;
         let isListening = false;
 
-        // Initialize Web Speech API
         function initSpeech() {
             if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
                 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -131,23 +130,18 @@
                 recognition.continuous = false;
                 recognition.interimResults = true;
                 recognition.lang = 'en-US';
-
                 recognition.onstart = () => {
                     isListening = true;
                     document.getElementById('mic-btn').classList.add('listening');
                     document.getElementById('voice-status').textContent = '🔴 LISTENING...';
                     activateWaveform();
                 };
-
                 recognition.onresult = (event) => {
                     let interim = '';
                     let final = '';
                     for (let i = event.resultIndex; i < event.results.length; i++) {
-                        if (event.results[i].isFinal) {
-                            final += event.results[i][0].transcript;
-                        } else {
-                            interim += event.results[i][0].transcript;
-                        }
+                        if (event.results[i].isFinal) { final += event.results[i][0].transcript; }
+                        else { interim += event.results[i][0].transcript; }
                     }
                     document.getElementById('user-input').value = final || interim;
                     if (final) {
@@ -155,28 +149,20 @@
                         setTimeout(() => sendMessage(), 300);
                     }
                 };
-
                 recognition.onerror = (event) => {
                     document.getElementById('voice-status').textContent = '⚠️ ' + event.error;
                     stopListening();
                 };
-
-                recognition.onend = () => {
-                    stopListening();
-                };
+                recognition.onend = () => { stopListening(); };
             } else {
                 document.getElementById('mic-btn').style.display = 'none';
-                document.getElementById('voice-status').textContent = 'Voice not supported in this browser';
             }
         }
 
         function toggleVoice() {
             if (!recognition) return;
-            if (isListening) {
-                recognition.stop();
-            } else {
-                recognition.start();
-            }
+            if (isListening) { recognition.stop(); }
+            else { recognition.start(); }
         }
 
         function stopListening() {
@@ -186,21 +172,30 @@
             deactivateWaveform();
         }
 
-        // AXIOM speaks back using browser TTS
-        function speak(text) {
-            if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel();
-                const utterance = new SpeechSynthesisUtterance(text);
-                utterance.rate = 0.95;
-                utterance.pitch = 0.9;
-                utterance.volume = 1;
-                const voices = window.speechSynthesis.getVoices();
-                const preferred = voices.find(v => v.name.includes('Google') && v.lang === 'en-US') ||
-                                  voices.find(v => v.lang === 'en-US') ||
-                                  voices[0];
-                if (preferred) utterance.voice = preferred;
-                window.speechSynthesis.speak(utterance);
-            }
+        async function speak(text) {
+            try {
+                const res = await fetch(`${API_URL}/speak`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ text })
+                });
+                const data = await res.json();
+                if (data.audio) {
+                    const audioBytes = atob(data.audio);
+                    const arrayBuffer = new ArrayBuffer(audioBytes.length);
+                    const view = new Uint8Array(arrayBuffer);
+                    for (let i = 0; i < audioBytes.length; i++) {
+                        view[i] = audioBytes.charCodeAt(i);
+                    }
+                    const blob = new Blob([arrayBuffer], { type: 'audio/mpeg' });
+                    const url = URL.createObjectURL(blob);
+                    const audio = new Audio(url);
+                    audio.play();
+                }
+            } catch (e) { console.log('TTS error:', e); }
         }
 
         async function authenticate() {
@@ -283,7 +278,6 @@
         authenticate();
         initSpeech();
         setInterval(updateStats, 5000);
-        window.speechSynthesis.onvoiceschanged = () => {};
     </script>
 </body>
 </html>

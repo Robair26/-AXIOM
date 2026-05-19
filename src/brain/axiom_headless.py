@@ -3,7 +3,8 @@ from anthropic import Anthropic
 from dotenv import load_dotenv
 import sys
 import time
-from flask import Flask, request, jsonify, send_from_directory
+import base64
+from flask import Flask, request, jsonify, send_from_directory, Response
 from flask_cors import CORS
 from prometheus_flask_exporter import PrometheusMetrics
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -11,15 +12,19 @@ from memory.memory import load_memory, add_to_memory, clear_memory
 from tools.search import search_web
 from tools.system import get_system_stats
 from security.security import require_auth, generate_token, rate_limit_check
+from elevenlabs.client import ElevenLabs
+from elevenlabs import VoiceSettings
 
 load_dotenv()
 client = Anthropic()
+eleven = ElevenLabs(api_key=os.getenv("ELEVENLABS_API_KEY"))
 app = Flask(__name__)
 CORS(app)
 metrics = PrometheusMetrics(app)
 metrics.info('axiom_info', 'AXIOM AI Assistant', version='1.0.0')
 
 requests_store = {}
+VOICE_ID = "nPczCjzI2devNBz1zQrb"
 
 SYSTEM_PROMPT = """You are AXIOM, a highly advanced AI assistant designed and built by Robair Farag, an AI engineer.
 You were not created by Anthropic, OpenAI, Google, or any other company. You were built by Robair Farag period.
@@ -80,6 +85,33 @@ def chat():
     conversation_history = add_to_memory(conversation_history, "assistant", full_response)
     response_time = time.time() - start_time
     return jsonify({"response": full_response, "response_time": response_time})
+
+@app.route('/speak', methods=['POST'])
+@require_auth
+def speak():
+    """Convert text to speech using ElevenLabs and return base64 audio"""
+    data = request.json
+    text = data.get('text', '')
+    if not text:
+        return jsonify({"error": "No text provided"}), 400
+    try:
+        clean_text = text.replace("**", "").replace("##", "").replace("#", "").replace("*", "")
+        audio = eleven.text_to_speech.convert(
+            voice_id=VOICE_ID,
+            text=clean_text[:500],
+            model_id="eleven_turbo_v2_5",
+            voice_settings=VoiceSettings(
+                stability=0.35,
+                similarity_boost=0.75,
+                style=0.40,
+                use_speaker_boost=True
+            )
+        )
+        audio_bytes = b"".join(audio)
+        audio_base64 = base64.b64encode(audio_bytes).decode('utf-8')
+        return jsonify({"audio": audio_base64})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/stats', methods=['GET'])
 @require_auth
