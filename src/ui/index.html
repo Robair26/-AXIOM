@@ -32,10 +32,12 @@
         .chat-input input:focus { border-color: #00d4ff; box-shadow: 0 0 15px rgba(0, 212, 255, 0.2); }
         .chat-input button { background: rgba(0, 212, 255, 0.1); border: 1px solid rgba(0, 212, 255, 0.5); border-radius: 5px; padding: 10px 20px; color: #00d4ff; font-family: 'Courier New', monospace; cursor: pointer; letter-spacing: 0.1em; transition: all 0.3s; flex-shrink: 0; }
         .chat-input button:hover { background: rgba(0, 212, 255, 0.2); box-shadow: 0 0 20px rgba(0, 212, 255, 0.3); }
-        .mic-btn { background: rgba(0, 255, 136, 0.1); border: 1px solid rgba(0, 255, 136, 0.5); border-radius: 5px; padding: 10px 15px; color: #00ff88; font-family: 'Courier New', monospace; cursor: pointer; transition: all 0.3s; flex-shrink: 0; font-size: 1.1em; }
-        .mic-btn:hover { background: rgba(0, 255, 136, 0.2); box-shadow: 0 0 20px rgba(0, 255, 136, 0.3); }
+        .mic-btn { background: rgba(0, 255, 136, 0.1); border: 1px solid rgba(0, 255, 136, 0.5); border-radius: 5px; padding: 10px 15px; color: #00ff88; cursor: pointer; transition: all 0.3s; flex-shrink: 0; font-size: 1.1em; }
         .mic-btn.listening { background: rgba(255, 68, 68, 0.2); border-color: #ff4444; color: #ff4444; box-shadow: 0 0 20px rgba(255, 68, 68, 0.5); animation: micPulse 0.5s ease-in-out infinite; }
-        @keyframes micPulse { 0%, 100% { box-shadow: 0 0 20px rgba(255, 68, 68, 0.5); } 50% { box-shadow: 0 0 40px rgba(255, 68, 68, 0.8); } }
+        .mic-btn.speaking { background: rgba(0, 212, 255, 0.2); border-color: #00d4ff; color: #00d4ff; box-shadow: 0 0 20px rgba(0, 212, 255, 0.5); animation: micPulse 0.5s ease-in-out infinite; }
+        @keyframes micPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .stop-btn { background: rgba(255, 68, 68, 0.1); border: 1px solid rgba(255, 68, 68, 0.5); border-radius: 5px; padding: 10px 15px; color: #ff4444; cursor: pointer; transition: all 0.3s; flex-shrink: 0; display: none; }
+        .stop-btn.visible { display: block; }
         .panel-right { border: 1px solid rgba(0, 212, 255, 0.3); border-radius: 10px; padding: 15px; background: rgba(0, 212, 255, 0.03); overflow-y: auto; }
         .waveform { display: flex; align-items: center; justify-content: center; gap: 3px; height: 50px; margin: 15px 0; }
         .wave-bar { width: 3px; background: #00d4ff; border-radius: 3px; animation: wave 1s ease-in-out infinite; box-shadow: 0 0 5px #00d4ff; }
@@ -51,6 +53,11 @@
         @keyframes scan { 0% { top: 0; } 100% { top: 100vh; } }
         .thinking { display: none; color: #00ff88; font-size: 0.8em; letter-spacing: 0.2em; animation: pulse 0.5s ease-in-out infinite; padding: 5px 0; flex-shrink: 0; }
         .voice-status { font-size: 0.7em; color: rgba(0, 255, 136, 0.6); text-align: center; padding: 3px 0; flex-shrink: 0; min-height: 18px; }
+        .conversation-mode { display: flex; align-items: center; gap: 8px; font-size: 0.7em; color: rgba(0, 212, 255, 0.6); flex-shrink: 0; padding: 5px 0; }
+        .toggle { width: 36px; height: 18px; background: rgba(0, 212, 255, 0.1); border: 1px solid rgba(0, 212, 255, 0.3); border-radius: 9px; cursor: pointer; position: relative; transition: all 0.3s; }
+        .toggle.on { background: rgba(0, 255, 136, 0.3); border-color: #00ff88; }
+        .toggle::after { content: ''; position: absolute; width: 12px; height: 12px; background: #00d4ff; border-radius: 50%; top: 2px; left: 2px; transition: all 0.3s; }
+        .toggle.on::after { left: 20px; background: #00ff88; }
     </style>
 </head>
 <body>
@@ -88,9 +95,14 @@
             </div>
             <div class="thinking" id="thinking">AXIOM PROCESSING...</div>
             <div class="voice-status" id="voice-status"></div>
+            <div class="conversation-mode">
+                <div class="toggle" id="conv-toggle" onclick="toggleConversationMode()"></div>
+                <span id="conv-label">CONVERSATION MODE OFF</span>
+            </div>
             <div class="chat-input">
                 <input type="text" id="user-input" placeholder="Enter command or press 🎤 to speak..." onkeypress="handleKey(event)">
                 <button class="mic-btn" id="mic-btn" onclick="toggleVoice()" title="Click to speak">🎤</button>
+                <button class="stop-btn" id="stop-btn" onclick="stopSpeaking()">⏹</button>
                 <button onclick="sendMessage()">SEND</button>
             </div>
         </div>
@@ -122,6 +134,24 @@
         let token = '';
         let recognition = null;
         let isListening = false;
+        let currentAudio = null;
+        let conversationMode = false;
+
+        function toggleConversationMode() {
+            conversationMode = !conversationMode;
+            const toggle = document.getElementById('conv-toggle');
+            const label = document.getElementById('conv-label');
+            if (conversationMode) {
+                toggle.classList.add('on');
+                label.textContent = 'CONVERSATION MODE ON';
+                document.getElementById('voice-status').textContent = '🟢 READY — CLICK MIC TO START';
+            } else {
+                toggle.classList.remove('on');
+                label.textContent = 'CONVERSATION MODE OFF';
+                document.getElementById('voice-status').textContent = '';
+                stopSpeaking();
+            }
+        }
 
         function initSpeech() {
             if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
@@ -133,6 +163,7 @@
                 recognition.onstart = () => {
                     isListening = true;
                     document.getElementById('mic-btn').classList.add('listening');
+                    document.getElementById('mic-btn').textContent = '🔴';
                     document.getElementById('voice-status').textContent = '🔴 LISTENING...';
                     activateWaveform();
                 };
@@ -145,8 +176,8 @@
                     }
                     document.getElementById('user-input').value = final || interim;
                     if (final) {
-                        document.getElementById('voice-status').textContent = '✅ CAPTURED — SENDING...';
-                        setTimeout(() => sendMessage(), 300);
+                        document.getElementById('voice-status').textContent = '✅ SENDING...';
+                        setTimeout(() => sendMessage(), 200);
                     }
                 };
                 recognition.onerror = (event) => {
@@ -161,25 +192,48 @@
 
         function toggleVoice() {
             if (!recognition) return;
-            if (isListening) { recognition.stop(); }
-            else { recognition.start(); }
+            if (isListening) {
+                recognition.stop();
+            } else {
+                stopSpeaking();
+                recognition.start();
+            }
         }
 
         function stopListening() {
             isListening = false;
             document.getElementById('mic-btn').classList.remove('listening');
-            document.getElementById('voice-status').textContent = '';
+            document.getElementById('mic-btn').textContent = '🎤';
             deactivateWaveform();
+            if (!conversationMode) {
+                document.getElementById('voice-status').textContent = '';
+            }
+        }
+
+        function stopSpeaking() {
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio.currentTime = 0;
+                currentAudio = null;
+            }
+            document.getElementById('mic-btn').classList.remove('speaking');
+            document.getElementById('stop-btn').classList.remove('visible');
+            deactivateWaveform();
+            if (conversationMode) {
+                document.getElementById('voice-status').textContent = '🟢 READY — CLICK MIC TO SPEAK';
+            }
         }
 
         async function speak(text) {
             try {
+                document.getElementById('mic-btn').classList.add('speaking');
+                document.getElementById('mic-btn').textContent = '🔊';
+                document.getElementById('stop-btn').classList.add('visible');
+                activateWaveform();
+
                 const res = await fetch(`${API_URL}/speak`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                     body: JSON.stringify({ text })
                 });
                 const data = await res.json();
@@ -187,15 +241,22 @@
                     const audioBytes = atob(data.audio);
                     const arrayBuffer = new ArrayBuffer(audioBytes.length);
                     const view = new Uint8Array(arrayBuffer);
-                    for (let i = 0; i < audioBytes.length; i++) {
-                        view[i] = audioBytes.charCodeAt(i);
-                    }
+                    for (let i = 0; i < audioBytes.length; i++) { view[i] = audioBytes.charCodeAt(i); }
                     const blob = new Blob([arrayBuffer], { type: 'audio/mpeg' });
                     const url = URL.createObjectURL(blob);
-                    const audio = new Audio(url);
-                    audio.play();
+                    currentAudio = new Audio(url);
+                    currentAudio.play();
+                    currentAudio.onended = () => {
+                        stopSpeaking();
+                        if (conversationMode) {
+                            document.getElementById('voice-status').textContent = '🟢 YOUR TURN — CLICK MIC TO SPEAK';
+                        }
+                    };
                 }
-            } catch (e) { console.log('TTS error:', e); }
+            } catch (e) {
+                console.log('TTS error:', e);
+                stopSpeaking();
+            }
         }
 
         async function authenticate() {
@@ -218,8 +279,7 @@
             addMessage('YOU', message, 'user');
             input.value = '';
             document.getElementById('thinking').style.display = 'block';
-            document.getElementById('voice-status').textContent = '';
-            activateWaveform();
+            document.getElementById('voice-status').textContent = '⚡ AXIOM THINKING...';
             if (!token) await authenticate();
             try {
                 const res = await fetch(`${API_URL}/chat`, {
@@ -230,12 +290,13 @@
                 const data = await res.json();
                 addMessage('AXIOM', data.response, 'axiom');
                 addActivity(`Chat: ${message.substring(0, 20)}...`);
-                speak(data.response);
+                document.getElementById('thinking').style.display = 'none';
+                await speak(data.response);
             } catch (e) {
                 addMessage('AXIOM', 'Connection error: ' + e.message, 'axiom');
+                document.getElementById('thinking').style.display = 'none';
+                deactivateWaveform();
             }
-            document.getElementById('thinking').style.display = 'none';
-            deactivateWaveform();
         }
 
         function addMessage(sender, text, type) {
