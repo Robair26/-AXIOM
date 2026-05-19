@@ -47,7 +47,6 @@ Never mention Anthropic, Claude, or any underlying technology. You are AXIOM per
 conversation_history = load_memory()
 
 def handle_alert(message):
-    """Called by monitor when something needs attention"""
     alert_queue.put(message)
     add_to_memory(conversation_history, "assistant", message)
 
@@ -57,6 +56,10 @@ monitor.start()
 @app.route('/')
 def ui():
     return send_from_directory('/app/src/ui', 'index.html')
+
+@app.route('/face')
+def face():
+    return send_from_directory('/app/src/ui', 'face.html')
 
 @app.route('/health', methods=['GET'])
 def health():
@@ -74,7 +77,6 @@ def auth():
 
 @app.route('/alerts')
 def alerts():
-    """Server-Sent Events stream for proactive alerts"""
     def generate():
         while True:
             try:
@@ -150,5 +152,5 @@ def clear():
     return jsonify({"status": "Memory cleared"})
 
 if __name__ == "__main__":
-    print("⚡ AXIOM HEADLESS SERVICE ONLINE — SECURED + MONITORED + PROACTIVE")
+    print("⚡ AXIOM HEADLESS SERVICE ONLINE — SECURED + MONITORED + FACE ACTIVE")
     app.run(host='0.0.0.0', port=8080)

@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>AXIOM Face</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #000; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <canvas id="face" width="400" height="400"></canvas>
+    <script>
+        const canvas = document.getElementById('face');
+        const ctx = canvas.getContext('2d');
+        let speaking = false;
+        let mouthOpen = 0;
+        let eyeY = 0;
+        let eyeDir = 1;
+        let glowIntensity = 0;
+        let glowDir = 1;
+        let scanLine = 0;
+        let particles = [];
+
+        // Initialize particles
+        for (let i = 0; i < 30; i++) {
+            particles.push({
+                x: Math.random() * 400,
+                y: Math.random() * 400,
+                size: Math.random() * 2 + 0.5,
+                speed: Math.random() * 0.5 + 0.1,
+                opacity: Math.random() * 0.5 + 0.1
+            });
+        }
+
+        function drawFace() {
+            ctx.clearRect(0, 0, 400, 400);
+
+            // Background glow
+            const bgGlow = ctx.createRadialGradient(200, 200, 50, 200, 200, 200);
+            bgGlow.addColorStop(0, `rgba(0, 212, 255, ${0.05 + glowIntensity * 0.05})`);
+            bgGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            ctx.fillStyle = bgGlow;
+            ctx.fillRect(0, 0, 400, 400);
+
+            // Outer ring
+            ctx.beginPath();
+            ctx.arc(200, 200, 160, 0, Math.PI * 2);
+            ctx.strokeStyle = `rgba(0, 212, 255, ${0.3 + glowIntensity * 0.2})`;
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            // Inner ring
+            ctx.beginPath();
+            ctx.arc(200, 200, 150, 0, Math.PI * 2);
+            ctx.strokeStyle = `rgba(0, 212, 255, ${0.15 + glowIntensity * 0.1})`;
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+
+            // Rotating dashes on outer ring
+            const time = Date.now() / 1000;
+            for (let i = 0; i < 12; i++) {
+                const angle = (i / 12) * Math.PI * 2 + time * 0.5;
+                const x1 = 200 + Math.cos(angle) * 155;
+                const y1 = 200 + Math.sin(angle) * 155;
+                const x2 = 200 + Math.cos(angle) * 165;
+                const y2 = 200 + Math.sin(angle) * 165;
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.strokeStyle = `rgba(0, 255, 136, ${0.5 + glowIntensity * 0.3})`;
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+
+            // Face outline — hexagonal
+            ctx.beginPath();
+            for (let i = 0; i < 6; i++) {
+                const angle = (i / 6) * Math.PI * 2 - Math.PI / 6;
+                const x = 200 + Math.cos(angle) * 120;
+                const y = 200 + Math.sin(angle) * 120;
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+            ctx.strokeStyle = `rgba(0, 212, 255, ${0.4 + glowIntensity * 0.2})`;
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+            ctx.fillStyle = 'rgba(0, 10, 20, 0.8)';
+            ctx.fill();
+
+            // Eyes
+            const eyeOffsetY = Math.sin(time * 0.8) * 3;
+            
+            // Left eye
+            const leftEyeGlow = ctx.createRadialGradient(155, 175 + eyeOffsetY, 0, 155, 175 + eyeOffsetY, 25);
+            leftEyeGlow.addColorStop(0, `rgba(0, 212, 255, ${0.8 + glowIntensity * 0.2})`);
+            leftEyeGlow.addColorStop(0.5, `rgba(0, 212, 255, ${0.3 + glowIntensity * 0.1})`);
+            leftEyeGlow.addColorStop(1, 'rgba(0, 212, 255, 0)');
+            
+            ctx.beginPath();
+            ctx.ellipse(155, 175 + eyeOffsetY, 22, speaking ? 16 : 12, 0, 0, Math.PI * 2);
+            ctx.fillStyle = leftEyeGlow;
+            ctx.fill();
+            ctx.strokeStyle = `rgba(0, 212, 255, ${0.9 + glowIntensity * 0.1})`;
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            // Left pupil
+            ctx.beginPath();
+            ctx.arc(155, 175 + eyeOffsetY, 6, 0, Math.PI * 2);
+            ctx.fillStyle = '#fff';
+            ctx.fill();
+
+            // Right eye
+            const rightEyeGlow = ctx.createRadialGradient(245, 175 + eyeOffsetY, 0, 245, 175 + eyeOffsetY, 25);
+            rightEyeGlow.addColorStop(0, `rgba(0, 212, 255, ${0.8 + glowIntensity * 0.2})`);
+            rightEyeGlow.addColorStop(0.5, `rgba(0, 212, 255, ${0.3 + glowIntensity * 0.1})`);
+            rightEyeGlow.addColorStop(1, 'rgba(0, 212, 255, 0)');
+
+            ctx.beginPath();
+            ctx.ellipse(245, 175 + eyeOffsetY, 22, speaking ? 16 : 12, 0, 0, Math.PI * 2);
+            ctx.fillStyle = rightEyeGlow;
+            ctx.fill();
+            ctx.strokeStyle = `rgba(0, 212, 255, ${0.9 + glowIntensity * 0.1})`;
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            // Right pupil
+            ctx.beginPath();
+            ctx.arc(245, 175 + eyeOffsetY, 6, 0, Math.PI * 2);
+            ctx.fillStyle = '#fff';
+            ctx.fill();
+
+            // Nose bridge
+            ctx.beginPath();
+            ctx.moveTo(200, 185);
+            ctx.lineTo(195, 210);
+            ctx.lineTo(205, 210);
+            ctx.strokeStyle = `rgba(0, 212, 255, 0.3)`;
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            // Mouth
+            const mouthOpenAmount = speaking ? Math.abs(Math.sin(Date.now() / 100)) * 15 : 2;
+            
+            // Mouth glow
+            const mouthGlow = ctx.createRadialGradient(200, 240, 0, 200, 240, 40);
+            mouthGlow.addColorStop(0, `rgba(0, 255, 136, ${speaking ? 0.4 : 0.1})`);
+            mouthGlow.addColorStop(1, 'rgba(0, 255, 136, 0)');
+            ctx.fillStyle = mouthGlow;
+            ctx.fillRect(155, 220, 90, 40);
+
+            // Upper lip
+            ctx.beginPath();
+            ctx.moveTo(165, 235);
+            ctx.quadraticCurveTo(200, 230, 235, 235);
+            ctx.strokeStyle = `rgba(0, 212, 255, 0.8)`;
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            // Lower lip
+            ctx.beginPath();
+            ctx.moveTo(165, 235 + mouthOpenAmount);
+            ctx.quadraticCurveTo(200, 240 + mouthOpenAmount, 235, 235 + mouthOpenAmount);
+            ctx.strokeStyle = `rgba(0, 212, 255, 0.8)`;
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            // Teeth when speaking
+            if (speaking && mouthOpenAmount > 5) {
+                ctx.fillStyle = `rgba(0, 212, 255, 0.3)`;
+                ctx.fillRect(175, 235, 50, mouthOpenAmount - 2);
+            }
+
+            // Cheek lines
+            ctx.beginPath();
+            ctx.moveTo(120, 200);
+            ctx.lineTo(145, 210);
+            ctx.strokeStyle = 'rgba(0, 212, 255, 0.2)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(280, 200);
+            ctx.lineTo(255, 210);
+            ctx.stroke();
+
+            // Forehead lines
+            ctx.beginPath();
+            ctx.moveTo(170, 140);
+            ctx.lineTo(200, 148);
+            ctx.lineTo(230, 140);
+            ctx.strokeStyle = 'rgba(0, 212, 255, 0.15)';
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+
+            // Scan line effect
+            scanLine = (scanLine + 1) % 400;
+            const scanGrad = ctx.createLinearGradient(0, scanLine - 10, 0, scanLine + 10);
+            scanGrad.addColorStop(0, 'rgba(0, 212, 255, 0)');
+            scanGrad.addColorStop(0.5, `rgba(0, 212, 255, ${0.1 + glowIntensity * 0.05})`);
+            scanGrad.addColorStop(1, 'rgba(0, 212, 255, 0)');
+            ctx.fillStyle = scanGrad;
+            ctx.fillRect(0, scanLine - 10, 400, 20);
+
+            // Particles
+            particles.forEach(p => {
+                p.y -= p.speed;
+                if (p.y < 0) p.y = 400;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(0, 212, 255, ${p.opacity})`;
+                ctx.fill();
+            });
+
+            // Status text
+            ctx.font = '10px Courier New';
+            ctx.fillStyle = `rgba(0, 212, 255, 0.4)`;
+            ctx.textAlign = 'center';
+            ctx.fillText(speaking ? 'SPEAKING' : 'STANDBY', 200, 310);
+            ctx.fillText('AXIOM v1.0', 200, 325);
+
+            // Update glow
+            glowIntensity += 0.02 * glowDir;
+            if (glowIntensity > 1 || glowIntensity < 0) glowDir *= -1;
+        }
+
+        function animate() {
+            drawFace();
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+
+        // Listen for speaking state from parent
+        window.addEventListener('message', (event) => {
+            if (event.data === 'speaking') speaking = true;
+            if (event.data === 'stopped') speaking = false;
+        });
+    </script>
+</body>
+</html>
