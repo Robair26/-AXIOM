@@ -11,38 +11,26 @@
         @keyframes gridMove { 0% { transform: translate(0, 0); } 100% { transform: translate(50px, 50px); } }
         .scan-line { position: fixed; top: 0; left: 0; width: 100%; height: 2px; background: linear-gradient(90deg, transparent, #00d4ff, transparent); animation: scan 4s linear infinite; opacity: 0.3; pointer-events: none; }
         @keyframes scan { 0% { top: 0; } 100% { top: 100dvh; } }
-
-        /* Desktop layout */
         .desktop-layout { display: flex; flex-direction: column; height: 100dvh; position: relative; z-index: 10; }
         .header { text-align: center; padding: 12px 20px; border-bottom: 1px solid rgba(0, 212, 255, 0.3); flex-shrink: 0; }
         .header h1 { font-size: clamp(1.5em, 4vw, 2.5em); letter-spacing: 0.5em; text-transform: uppercase; text-shadow: 0 0 30px #00d4ff; animation: pulse 2s ease-in-out infinite; }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
         .header p { font-size: clamp(0.5em, 1.5vw, 0.7em); letter-spacing: 0.2em; color: rgba(0, 212, 255, 0.6); margin-top: 3px; }
         .main-area { display: flex; flex: 1; min-height: 0; gap: 15px; padding: 15px; }
-
-        /* Panels */
         .panel { border: 1px solid rgba(0, 212, 255, 0.3); border-radius: 10px; padding: 12px; background: rgba(0, 212, 255, 0.03); }
         .panel-title { font-size: 0.65em; letter-spacing: 0.3em; color: rgba(0, 212, 255, 0.6); margin-bottom: 12px; text-transform: uppercase; }
         .panel-left { width: 200px; flex-shrink: 0; overflow-y: auto; }
         .panel-right { width: 200px; flex-shrink: 0; overflow-y: auto; }
         .panel-center { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
-
-        /* Status items */
         .status-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid rgba(0, 212, 255, 0.1); font-size: 0.7em; }
         .status-dot { width: 7px; height: 7px; border-radius: 50%; background: #00ff88; box-shadow: 0 0 8px #00ff88; animation: blink 1.5s ease-in-out infinite; flex-shrink: 0; }
         @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-
-        /* Metrics */
         .metric { margin-bottom: 8px; }
         .metric-label { display: flex; justify-content: space-between; font-size: 0.68em; margin-bottom: 3px; color: rgba(0, 212, 255, 0.8); }
         .metric-bar { height: 3px; background: rgba(0, 212, 255, 0.1); border-radius: 2px; overflow: hidden; }
         .metric-fill { height: 100%; background: linear-gradient(90deg, #00d4ff, #00ff88); border-radius: 2px; transition: width 1s ease; }
-
-        /* Face */
         .face-container { display: flex; justify-content: center; flex-shrink: 0; margin-bottom: 8px; }
         .face-container iframe { border: 1px solid rgba(0, 212, 255, 0.2); border-radius: 50%; background: #000; }
-
-        /* Chat */
         .chat-messages { flex: 1; overflow-y: auto; padding: 8px; scrollbar-width: thin; scrollbar-color: rgba(0, 212, 255, 0.3) transparent; min-height: 0; }
         .message { margin-bottom: 10px; animation: fadeIn 0.3s ease; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
@@ -60,8 +48,8 @@
         .message.beta .text { border-left-color: #ff88ff; }
         .message.gamma .text { border-left-color: #ffaa00; }
         .message.synthesis .text { border-left-color: #00ff88; }
-
-        /* Input area */
+        .cursor { display: inline-block; width: 8px; height: 14px; background: #00ff88; animation: cursorBlink 0.7s infinite; vertical-align: middle; margin-left: 2px; }
+        @keyframes cursorBlink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
         .input-area { flex-shrink: 0; padding-top: 8px; border-top: 1px solid rgba(0, 212, 255, 0.2); }
         .thinking { display: none; color: #00ff88; font-size: 0.72em; letter-spacing: 0.2em; animation: pulse 0.5s ease-in-out infinite; padding: 3px 0; }
         .voice-status { font-size: 0.65em; color: rgba(0, 255, 136, 0.6); padding: 2px 0; min-height: 14px; }
@@ -84,25 +72,19 @@
         .stop-btn.visible { display: block; }
         .debate-btn { background: rgba(255, 136, 255, 0.1); border-color: rgba(255, 136, 255, 0.5); color: #ff88ff; }
         .send-btn { background: rgba(0, 212, 255, 0.15); border-color: rgba(0, 212, 255, 0.6); }
-
-        /* Waveform */
+        .panel-right { border: 1px solid rgba(0, 212, 255, 0.3); border-radius: 10px; padding: 15px; background: rgba(0, 212, 255, 0.03); overflow-y: auto; }
         .waveform { display: flex; align-items: center; justify-content: center; gap: 3px; height: 35px; margin: 8px 0; }
         .wave-bar { width: 3px; background: #00d4ff; border-radius: 3px; animation: wave 1s ease-in-out infinite; }
         .wave-bar:nth-child(2) { animation-delay: 0.1s; } .wave-bar:nth-child(3) { animation-delay: 0.2s; } .wave-bar:nth-child(4) { animation-delay: 0.3s; } .wave-bar:nth-child(5) { animation-delay: 0.4s; } .wave-bar:nth-child(6) { animation-delay: 0.3s; } .wave-bar:nth-child(7) { animation-delay: 0.2s; } .wave-bar:nth-child(8) { animation-delay: 0.1s; }
         @keyframes wave { 0%, 100% { height: 4px; } 50% { height: 28px; } }
         .wave-bar.idle { animation: none; height: 4px; }
-
-        /* Footer */
         .footer { text-align: center; font-size: 0.55em; color: rgba(0, 212, 255, 0.25); letter-spacing: 0.2em; padding: 6px; flex-shrink: 0; }
-
-        /* Debate separator */
         .debate-sep { text-align: center; font-size: 0.6em; color: rgba(255, 136, 255, 0.5); letter-spacing: 0.3em; padding: 6px 0; border-top: 1px solid rgba(255, 136, 255, 0.2); border-bottom: 1px solid rgba(255, 136, 255, 0.2); margin: 6px 0; }
-
-        /* Alert flash */
         .alert-flash { animation: alertFlash 0.5s ease-in-out 3; }
         @keyframes alertFlash { 0%, 100% { border-color: rgba(0, 212, 255, 0.3); } 50% { border-color: #ff4444; box-shadow: 0 0 20px rgba(255, 68, 68, 0.5); } }
-
-        /* MOBILE LAYOUT */
+        .mobile-stats { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 100; padding: 20px; overflow-y: auto; }
+        .mobile-stats.visible { display: block; }
+        .mobile-stats-close { position: absolute; top: 15px; right: 15px; background: none; border: 1px solid rgba(0,212,255,0.3); color: #00d4ff; padding: 6px 12px; cursor: pointer; font-family: 'Courier New', monospace; border-radius: 5px; }
         @media (max-width: 768px) {
             .panel-left, .panel-right { display: none; }
             .main-area { padding: 8px; gap: 0; }
@@ -111,32 +93,17 @@
             .header h1 { font-size: 1.8em; letter-spacing: 0.3em; }
             .header p { display: none; }
             .face-container iframe { width: 120px; height: 120px; }
-            .chat-input { font-size: 16px; } /* Prevents zoom on iOS */
-            .buttons { flex-wrap: wrap; }
-            .btn { padding: 12px 10px; font-size: 0.78em; }
-            .mic-btn { padding: 12px 16px; font-size: 1.1em; }
-
-            /* Mobile bottom nav */
+            .chat-input { font-size: 16px; }
             .mobile-nav { display: flex; justify-content: space-around; padding: 8px; border-top: 1px solid rgba(0, 212, 255, 0.2); flex-shrink: 0; }
             .mobile-nav-btn { background: none; border: none; color: rgba(0, 212, 255, 0.5); font-size: 0.65em; text-align: center; cursor: pointer; padding: 4px 8px; font-family: 'Courier New', monospace; letter-spacing: 0.1em; }
-            .mobile-nav-btn.active { color: #00d4ff; }
         }
-
-        @media (min-width: 769px) {
-            .mobile-nav { display: none; }
-        }
-
-        /* Mobile stats overlay */
-        .mobile-stats { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 100; padding: 20px; overflow-y: auto; }
-        .mobile-stats.visible { display: block; }
-        .mobile-stats-close { position: absolute; top: 15px; right: 15px; background: none; border: 1px solid rgba(0,212,255,0.3); color: #00d4ff; padding: 6px 12px; cursor: pointer; font-family: 'Courier New', monospace; border-radius: 5px; }
+        @media (min-width: 769px) { .mobile-nav { display: none; } }
     </style>
 </head>
 <body>
     <div class="grid-bg"></div>
     <div class="scan-line"></div>
 
-    <!-- Mobile Stats Overlay -->
     <div class="mobile-stats" id="mobile-stats">
         <button class="mobile-stats-close" onclick="toggleMobileStats()">✕ CLOSE</button>
         <div style="margin-top: 40px;">
@@ -171,9 +138,7 @@
             <h1>AXIOM</h1>
             <p>ADAPTIVE EXPERIMENTAL INTELLIGENCE OPERATING MACHINE — BUILD 1.0</p>
         </div>
-
         <div class="main-area">
-            <!-- Left Panel — Desktop Only -->
             <div class="panel panel-left">
                 <div class="panel-title">⬡ System Status</div>
                 <div class="status-item"><span>AI BRAIN</span><div class="status-dot"></div></div>
@@ -192,7 +157,6 @@
                 </div>
             </div>
 
-            <!-- Center Panel -->
             <div class="panel panel-center" id="main-panel">
                 <div class="panel-title" style="flex-shrink:0;">⬡ AXIOM Interface</div>
                 <div class="face-container">
@@ -221,7 +185,6 @@
                 </div>
             </div>
 
-            <!-- Right Panel — Desktop Only -->
             <div class="panel panel-right">
                 <div class="panel-title">⬡ Voice Activity</div>
                 <div class="waveform" id="waveform">
@@ -247,9 +210,8 @@
 
         <div class="footer">AXIOM — DEFENSE GRADE EDGE-CLOUD HYBRID AI — BUILT BY ROBAIR FARAG — ALL SYSTEMS NOMINAL</div>
 
-        <!-- Mobile Bottom Nav -->
         <div class="mobile-nav">
-            <button class="mobile-nav-btn active" onclick="showMobileChat()">💬 CHAT</button>
+            <button class="mobile-nav-btn" onclick="showMobileChat()">💬 CHAT</button>
             <button class="mobile-nav-btn" onclick="toggleMobileStats()">📊 STATS</button>
             <button class="mobile-nav-btn" onclick="startDebate()">⚡ DEBATE</button>
         </div>
@@ -390,25 +352,83 @@
             if (!message) return;
             addMessage('YOU', message, 'user');
             input.value = '';
-            document.getElementById('thinking').style.display = 'block';
-            document.getElementById('voice-status').textContent = '⚡ AXIOM THINKING...';
             if (!token) await authenticate();
+
+            // Create AXIOM message with streaming cursor
+            const container = document.getElementById('chat-messages');
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'message axiom';
+            msgDiv.innerHTML = '<div class="sender">AXIOM //</div><div class="text" id="streaming-text"><span class="cursor"></span></div>';
+            container.appendChild(msgDiv);
+            container.scrollTop = container.scrollHeight;
+
+            document.getElementById('voice-status').textContent = '⚡ AXIOM THINKING...';
+
+            let fullResponse = '';
+            let streamingEl = document.getElementById('streaming-text');
+
             try {
-                const res = await fetch(`${API_URL}/chat`, {
+                const res = await fetch(`${API_URL}/chat/stream`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                     body: JSON.stringify({ message })
                 });
-                const data = await res.json();
-                addMessage('AXIOM', data.response, 'axiom');
-                addActivity(`Chat: ${message.substring(0, 20)}...`);
-                document.getElementById('thinking').style.display = 'none';
-                await speak(data.response);
+
+                const reader = res.body.getReader();
+                const decoder = new TextDecoder();
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    const chunk = decoder.decode(value);
+                    const lines = chunk.split('\n');
+
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            try {
+                                const data = JSON.parse(line.slice(6));
+                                if (data.text && !data.replace) {
+                                    fullResponse += data.text;
+                                    streamingEl.innerHTML = fullResponse + '<span class="cursor"></span>';
+                                    container.scrollTop = container.scrollHeight;
+                                } else if (data.replace) {
+                                    fullResponse = data.text;
+                                    streamingEl.innerHTML = fullResponse;
+                                } else if (data.done) {
+                                    streamingEl.innerHTML = data.full || fullResponse;
+                                    streamingEl.removeAttribute('id');
+                                    addActivity(`Chat: ${message.substring(0, 20)}...`);
+                                    document.getElementById('voice-status').textContent = '';
+                                    await speak(data.full || fullResponse);
+                                }
+                            } catch(e) {}
+                        }
+                    }
+                }
             } catch (e) {
-                addMessage('AXIOM', 'Connection error: ' + e.message, 'axiom');
-                document.getElementById('thinking').style.display = 'none';
-                deactivateWaveform();
+                if (streamingEl) streamingEl.innerHTML = 'Connection error: ' + e.message;
+                document.getElementById('voice-status').textContent = '';
             }
+        }
+
+        function addMessage(sender, text, type) {
+            const container = document.getElementById('chat-messages');
+            const div = document.createElement('div');
+            div.className = `message ${type}`;
+            div.innerHTML = `<div class="sender">${sender} //</div><div class="text">${text}</div>`;
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function addActivity(text) {
+            const log = document.getElementById('activity-log');
+            if (!log) return;
+            const div = document.createElement('div');
+            div.style.cssText = 'padding:4px 0;border-bottom:1px solid rgba(0,212,255,0.1);';
+            div.textContent = text;
+            log.insertBefore(div, log.firstChild);
+            if (log.children.length > 5) log.removeChild(log.lastChild);
         }
 
         async function startDebate() {
@@ -452,25 +472,6 @@
             }
         }
 
-        function addMessage(sender, text, type) {
-            const container = document.getElementById('chat-messages');
-            const div = document.createElement('div');
-            div.className = `message ${type}`;
-            div.innerHTML = `<div class="sender">${sender} //</div><div class="text">${text}</div>`;
-            container.appendChild(div);
-            container.scrollTop = container.scrollHeight;
-        }
-
-        function addActivity(text) {
-            const log = document.getElementById('activity-log');
-            if (!log) return;
-            const div = document.createElement('div');
-            div.style.cssText = 'padding:4px 0;border-bottom:1px solid rgba(0,212,255,0.1);';
-            div.textContent = text;
-            log.insertBefore(div, log.firstChild);
-            if (log.children.length > 5) log.removeChild(log.lastChild);
-        }
-
         function handleKey(e) { if (e.key === 'Enter') sendMessage(); }
         function activateWaveform() { document.querySelectorAll('.wave-bar').forEach(b => b.classList.remove('idle')); }
         function deactivateWaveform() { document.querySelectorAll('.wave-bar').forEach(b => b.classList.add('idle')); }
@@ -485,12 +486,9 @@
                 const memMatch = stats.match(/Memory is at ([\d.]+)%/);
                 const diskMatch = stats.match(/Disk is at ([\d.]+)%/);
                 const sets = [
-                    ['cpu-val', 'cpu-bar', cpuMatch],
-                    ['cpu-val-m', 'cpu-bar-m', cpuMatch],
-                    ['mem-val', 'mem-bar', memMatch],
-                    ['mem-val-m', 'mem-bar-m', memMatch],
-                    ['disk-val', 'disk-bar', diskMatch],
-                    ['disk-val-m', 'disk-bar-m', diskMatch],
+                    ['cpu-val','cpu-bar',cpuMatch],['cpu-val-m','cpu-bar-m',cpuMatch],
+                    ['mem-val','mem-bar',memMatch],['mem-val-m','mem-bar-m',memMatch],
+                    ['disk-val','disk-bar',diskMatch],['disk-val-m','disk-bar-m',diskMatch]
                 ];
                 sets.forEach(([valId, barId, match]) => {
                     if (match) {
