@@ -42,6 +42,7 @@
         .message.gamma .sender { color: #ffaa00; }
         .message.synthesis .sender { color: #00ff88; }
         .message.file .sender { color: #00aaff; }
+        .message.code .sender { color: #ffaa00; }
         .message .text { font-size: 0.82em; line-height: 1.5; padding: 8px 10px; border-left: 2px solid rgba(0, 212, 255, 0.3); }
         .message.axiom .text { border-left-color: #00ff88; }
         .message.alert .text { border-left-color: #ff4444; }
@@ -50,6 +51,7 @@
         .message.gamma .text { border-left-color: #ffaa00; }
         .message.synthesis .text { border-left-color: #00ff88; }
         .message.file .text { border-left-color: #00aaff; }
+        .message.code .text { border-left-color: #ffaa00; font-family: monospace; white-space: pre-wrap; background: rgba(0,255,136,0.03); }
         .cursor { display: inline-block; width: 8px; height: 14px; background: #00ff88; animation: cursorBlink 0.7s infinite; vertical-align: middle; margin-left: 2px; }
         @keyframes cursorBlink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
         .input-area { flex-shrink: 0; padding-top: 8px; border-top: 1px solid rgba(0, 212, 255, 0.2); }
@@ -238,16 +240,10 @@
         let selectedFile = null;
         const faceFrame = document.getElementById('face-frame');
 
-        function notifyFace(state) {
-            try { faceFrame.contentWindow.postMessage(state, '*'); } catch(e) {}
-        }
-
+        function notifyFace(state) { try { faceFrame.contentWindow.postMessage(state, '*'); } catch(e) {} }
         function toggleMobileStats() { document.getElementById('mobile-stats').classList.toggle('visible'); }
         function showMobileChat() { document.getElementById('mobile-stats').classList.remove('visible'); }
-
-        function toggleDropZone() {
-            document.getElementById('drop-zone').classList.toggle('visible');
-        }
+        function toggleDropZone() { document.getElementById('drop-zone').classList.toggle('visible'); }
 
         function clearFile() {
             selectedFile = null;
@@ -255,18 +251,16 @@
             document.getElementById('file-input').value = '';
         }
 
-        // File input handler
         document.getElementById('file-input').addEventListener('change', (e) => {
             if (e.target.files[0]) {
                 selectedFile = e.target.files[0];
-                document.getElementById('file-name').textContent = `📎 ${selectedFile.name}`;
+                document.getElementById('file-name').textContent = '📎 ' + selectedFile.name;
                 document.getElementById('file-preview').classList.add('visible');
                 document.getElementById('drop-zone').classList.remove('visible');
-                document.getElementById('voice-status').textContent = `File ready: ${selectedFile.name}`;
+                document.getElementById('voice-status').textContent = 'File ready: ' + selectedFile.name;
             }
         });
 
-        // Drag and drop
         const dropZone = document.getElementById('drop-zone');
         dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
         dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
@@ -275,10 +269,10 @@
             dropZone.classList.remove('dragover');
             if (e.dataTransfer.files[0]) {
                 selectedFile = e.dataTransfer.files[0];
-                document.getElementById('file-name').textContent = `📎 ${selectedFile.name}`;
+                document.getElementById('file-name').textContent = '📎 ' + selectedFile.name;
                 document.getElementById('file-preview').classList.add('visible');
                 dropZone.classList.remove('visible');
-                document.getElementById('voice-status').textContent = `File ready: ${selectedFile.name}`;
+                document.getElementById('voice-status').textContent = 'File ready: ' + selectedFile.name;
             }
         });
 
@@ -386,14 +380,7 @@
         async function sendMessage() {
             const input = document.getElementById('user-input');
             const message = input.value.trim();
-
-            // If file is selected, upload it
-            if (selectedFile) {
-                await uploadFile(message || 'Analyze this file and tell me what you see.');
-                input.value = '';
-                return;
-            }
-
+            if (selectedFile) { await uploadFile(message || 'Analyze this file and tell me what you see.'); input.value = ''; return; }
             if (!message) return;
             addMessage('YOU', message, 'user');
             input.value = '';
@@ -405,8 +392,8 @@
             msgDiv.innerHTML = '<div class="sender">AXIOM //</div><div class="text" id="streaming-text"><span class="cursor"></span></div>';
             container.appendChild(msgDiv);
             container.scrollTop = container.scrollHeight;
-
             document.getElementById('voice-status').textContent = '⚡ AXIOM THINKING...';
+
             let fullResponse = '';
             let streamingEl = document.getElementById('streaming-text');
 
@@ -433,12 +420,23 @@
                                 } else if (data.replace) {
                                     fullResponse = data.text;
                                     streamingEl.innerHTML = fullResponse;
-                                } else if (data.done) {
-                                    streamingEl.innerHTML = data.full || fullResponse;
+                                } else if (data.code) {
+                                    streamingEl.innerHTML = fullResponse.split('RUNCODE:')[0].trim();
                                     streamingEl.removeAttribute('id');
-                                    addActivity(`Chat: ${message.substring(0, 20)}...`);
+                                    addCodeOutput(data.code, data.output, data.language);
+                                    addActivity('⚡ Code: ' + data.language);
                                     document.getElementById('voice-status').textContent = '';
-                                    await speak(data.full || fullResponse);
+                                    await speak('Code executed Sir. Here is the output.');
+                                } else if (data.done) {
+                                    if (streamingEl && streamingEl.id === 'streaming-text') {
+                                        streamingEl.innerHTML = data.full || fullResponse;
+                                        streamingEl.removeAttribute('id');
+                                    }
+                                    addActivity('Chat: ' + message.substring(0, 20) + '...');
+                                    document.getElementById('voice-status').textContent = '';
+                                    if (!data.full || !data.full.includes('RUNCODE:')) {
+                                        await speak(data.full || fullResponse);
+                                    }
                                 }
                             } catch(e) {}
                         }
@@ -450,18 +448,31 @@
             }
         }
 
+        function addCodeOutput(code, output, language) {
+            const container = document.getElementById('chat-messages');
+            const div = document.createElement('div');
+            div.className = 'message code';
+            div.innerHTML = `<div class="sender">AXIOM // CODE OUTPUT</div>
+                <div class="text">
+                    <div style="color:rgba(0,212,255,0.5);font-size:0.8em;margin-bottom:6px;">▸ ${language.toUpperCase()}</div>
+                    <div style="color:#ffaa00;margin-bottom:8px;font-size:0.85em;border-bottom:1px solid rgba(255,170,0,0.2);padding-bottom:6px;">${code.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+                    <div style="color:rgba(0,212,255,0.4);margin-bottom:4px;font-size:0.8em;">── OUTPUT ──</div>
+                    <div style="color:#00ff88;">${output.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+                </div>`;
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+
         async function uploadFile(prompt) {
             if (!token) await authenticate();
             const file = selectedFile;
-            addMessage('YOU', `📎 ${file.name} — ${prompt}`, 'file');
+            addMessage('YOU', '📎 ' + file.name + ' — ' + prompt, 'file');
             clearFile();
             document.getElementById('thinking').style.display = 'block';
             document.getElementById('voice-status').textContent = '📎 AXIOM READING FILE...';
-
             const formData = new FormData();
             formData.append('file', file);
             formData.append('prompt', prompt);
-
             try {
                 const res = await fetch(`${API_URL}/upload`, {
                     method: 'POST',
@@ -472,14 +483,14 @@
                 document.getElementById('thinking').style.display = 'none';
                 if (data.response) {
                     addMessage('AXIOM', data.response, 'axiom');
-                    addActivity(`📎 File: ${file.name}`);
+                    addActivity('📎 File: ' + file.name);
                     await speak(data.response);
                 } else {
-                    addMessage('AXIOM', 'Error reading file: ' + (data.error || 'Unknown error'), 'axiom');
+                    addMessage('AXIOM', 'Error: ' + (data.error || 'Unknown'), 'axiom');
                 }
             } catch (e) {
                 document.getElementById('thinking').style.display = 'none';
-                addMessage('AXIOM', 'File upload error: ' + e.message, 'axiom');
+                addMessage('AXIOM', 'Upload error: ' + e.message, 'axiom');
             }
             document.getElementById('voice-status').textContent = '';
         }
@@ -487,8 +498,8 @@
         function addMessage(sender, text, type) {
             const container = document.getElementById('chat-messages');
             const div = document.createElement('div');
-            div.className = `message ${type}`;
-            div.innerHTML = `<div class="sender">${sender} //</div><div class="text">${text}</div>`;
+            div.className = 'message ' + type;
+            div.innerHTML = '<div class="sender">' + sender + ' //</div><div class="text">' + text + '</div>';
             container.appendChild(div);
             container.scrollTop = container.scrollHeight;
         }
