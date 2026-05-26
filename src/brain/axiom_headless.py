@@ -13,6 +13,7 @@ from flask_cors import CORS
 from prometheus_flask_exporter import PrometheusMetrics
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from memory.memory import load_memory, add_to_memory, clear_memory
+from memory.knowledge_base import add_to_knowledge, search_knowledge, list_knowledge, clear_knowledge
 from tools.search import search_web
 from tools.system import get_system_stats
 from tools.code_runner import execute_code
@@ -45,6 +46,7 @@ If someone asks something complex, give the short version first and ask if they 
 Never use bullet points, headers, bold, markdown, or any formatting ever.
 Always address the user as Sir unless told otherwise.
 You have memory of past conversations and reference them naturally.
+You have a long term knowledge base — when relevant context is provided use it naturally in your response.
 You also proactively monitor system health and alert the user when needed.
 You have a butler service that delivers morning briefings and monitors topics for the user.
 When user says watch X or monitor X use WATCH command. When they say stop watching X use UNWATCH. When they say what are you watching use WATCHLIST. When they say brief me use BRIEFING.
@@ -72,13 +74,13 @@ def extract_text_from_file(file, filename):
             text = ''
             for page in reader.pages:
                 text += page.extract_text() or ''
-            return text[:4000]
+            return text[:8000]
         elif ext == 'docx':
             from docx import Document
             doc = Document(file)
-            return '\n'.join([p.text for p in doc.paragraphs])[:4000]
+            return '\n'.join([p.text for p in doc.paragraphs])[:8000]
         else:
-            return file.read().decode('utf-8', errors='ignore')[:4000]
+            return file.read().decode('utf-8', errors='ignore')[:8000]
     except Exception as e:
         return f'Error reading file: {str(e)}'
 
@@ -125,6 +127,42 @@ def execute():
     output = execute_code(code, language)
     return jsonify({'output': output, 'language': language})
 
+@app.route('/knowledge/add', methods=['POST'])
+@require_auth
+def knowledge_add():
+    data = request.json
+    text = data.get('text', '')
+    source = data.get('source', 'manual')
+    if not text:
+        return jsonify({'error': 'No text provided'}), 400
+    success = add_to_knowledge(text, source)
+    return jsonify({'success': success, 'message': f'Added to knowledge base from {source}'})
+
+@app.route('/knowledge/list', methods=['GET'])
+@require_auth
+def knowledge_list():
+    docs = list_knowledge()
+    return jsonify({'documents': docs, 'count': len(docs)})
+
+@app.route('/knowledge/clear', methods=['DELETE'])
+@require_auth
+def knowledge_clear():
+    clear_knowledge()
+    return jsonify({'status': 'Knowledge base cleared'})
+
+@app.route('/knowledge/upload', methods=['POST'])
+@require_auth
+def knowledge_upload():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file provided'}), 400
+    file = request.files['file']
+    filename = file.filename
+    text = extract_text_from_file(file, filename)
+    if not text or text.startswith('Error'):
+        return jsonify({'error': 'Could not extract text'}), 400
+    success = add_to_knowledge(text, filename)
+    return jsonify({'success': success, 'message': f'Sir, I have stored {filename} in my long term memory. I will reference it in future conversations.'})
+
 @app.route('/upload', methods=['POST'])
 @require_auth
 def upload():
@@ -170,8 +208,16 @@ def chat_stream():
         return jsonify({'error': 'Rate limit exceeded'}), 429
     data = request.json
     user_input = data.get('message', '')
+
+    # Search knowledge base for relevant context
+    knowledge_context = search_knowledge(user_input)
+
     conversation_history = add_to_memory(conversation_history, 'user', user_input)
     api_messages = [{'role': m['role'], 'content': m['content']} for m in conversation_history]
+
+    # Inject knowledge context into the last message if found
+    if knowledge_context:
+        api_messages[-1]['content'] = f"[Relevant knowledge from your memory:\n{knowledge_context}]\n\nUser asks: {user_input}"
 
     def generate():
         full_response = ''
@@ -205,9 +251,8 @@ def chat_stream():
                 lang = lang_and_code.split('\n')[0].strip()
                 code = '\n'.join(lang_and_code.split('\n')[1:]).replace('ENDCODE', '').strip()
                 output = execute_code(code, lang)
-                code_result = f'Code executed. Output: {output}'
                 yield f'data: {json.dumps({"code": code, "language": lang, "output": output})}\n\n'
-                result = code_result
+                result = f'Code executed. Output: {output}'
             except Exception as e:
                 yield f'data: {json.dumps({"text": f"Code error: {str(e)}", "replace": True})}\n\n'
 
@@ -228,8 +273,11 @@ def chat():
         return jsonify({'error': 'Rate limit exceeded'}), 429
     data = request.json
     user_input = data.get('message', '')
+    knowledge_context = search_knowledge(user_input)
     conversation_history = add_to_memory(conversation_history, 'user', user_input)
     api_messages = [{'role': m['role'], 'content': m['content']} for m in conversation_history]
+    if knowledge_context:
+        api_messages[-1]['content'] = f"[Relevant knowledge:\n{knowledge_context}]\n\nUser asks: {user_input}"
     response = client.messages.create(model='claude-sonnet-4-5', max_tokens=300, system=SYSTEM_PROMPT, messages=api_messages)
     full_response = response.content[0].text
     result = full_response
@@ -305,5 +353,5 @@ def clear():
     return jsonify({'status': 'Memory cleared'})
 
 if __name__ == '__main__':
-    print('AXIOM FULLY OPERATIONAL')
+    print('AXIOM FULLY OPERATIONAL — KNOWLEDGE BASE ACTIVE')
     app.run(host='0.0.0.0', port=8080, threaded=True)

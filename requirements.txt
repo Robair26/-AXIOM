@@ -18,3 +18,7 @@ pyjwt
 prometheus-flask-exporter
 flask-cors
 schedule
+chromadb
+sentence-transformers
+chromadb
+sentence-transformers
