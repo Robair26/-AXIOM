@@ -7,7 +7,6 @@ pyaudio
 pyttsx3
 elevenlabs
 pygame
-chromadb
 ddgs
 psutil
 pyautogui
@@ -18,7 +17,3 @@ pyjwt
 prometheus-flask-exporter
 flask-cors
 schedule
-chromadb
-sentence-transformers
-chromadb
-sentence-transformers
