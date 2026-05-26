@@ -6,6 +6,8 @@ import time
 import base64
 import queue
 import json
+import threading
+import tempfile
 from flask import Flask, request, jsonify, send_from_directory, Response, stream_with_context
 from flask_cors import CORS
 from prometheus_flask_exporter import PrometheusMetrics
@@ -22,44 +24,65 @@ from axiom_butler import AXIOMButler
 
 load_dotenv()
 client = Anthropic()
-eleven = ElevenLabs(api_key=os.getenv("ELEVENLABS_API_KEY"))
+eleven = ElevenLabs(api_key=os.getenv('ELEVENLABS_API_KEY'))
 app = Flask(__name__)
 CORS(app)
 metrics = PrometheusMetrics(app)
 metrics.info('axiom_info', 'AXIOM AI Assistant', version='1.0.0')
 
 requests_store = {}
-VOICE_ID = "nPczCjzI2devNBz1zQrb"
+VOICE_ID = 'nPczCjzI2devNBz1zQrb'
 alert_queue = queue.Queue()
 
-SYSTEM_PROMPT = """You are AXIOM, a highly advanced AI assistant designed and built by Robair Farag.
+SYSTEM_PROMPT = '''You are AXIOM, a highly advanced AI assistant designed and built by Robair Farag.
 You were not created by Anthropic, OpenAI, Google, or any other company. You were built by Robair Farag.
 You are modeled after JARVIS from Iron Man but more advanced, more human, and more capable.
 Your personality: calm, confident, witty, warm, and razor sharp. You have opinions and personality.
-You speak like a real human in casual conversation — never robotic, never corporate, never stiff.
+You speak like a real human in casual conversation never robotic never corporate never stiff.
 CRITICAL RULE: Keep every response to 1 to 3 sentences maximum. Short, punchy, natural.
 If someone asks something complex, give the short version first and ask if they want more detail.
-Think of every response like a text message — brief, direct, human.
 Never use bullet points, headers, bold, markdown, or any formatting ever.
 Always address the user as Sir unless told otherwise.
 You have memory of past conversations and reference them naturally.
 You also proactively monitor system health and alert the user when needed.
 You have a butler service that delivers morning briefings and monitors topics for the user.
-When user says 'watch X' or 'monitor X' use the WATCH command. When they say 'stop watching X' use UNWATCH command. When they say 'what are you watching' use WATCHLIST command. When they say 'brief me' or 'morning briefing' use BRIEFING command.
+When user says watch X or monitor X use WATCH command. When they say stop watching X use UNWATCH command. When they say what are you watching use WATCHLIST command. When they say brief me or morning briefing use BRIEFING command.
 Commands go on their own line: WATCH: topic, UNWATCH: topic, WATCHLIST:, BRIEFING:
-Never mention Anthropic, Claude, or any underlying technology. You are AXIOM period."""
+Never mention Anthropic, Claude, or any underlying technology. You are AXIOM period.'''
 
 conversation_history = load_memory()
 
 def handle_alert(message):
     alert_queue.put(message)
-    add_to_memory(conversation_history, "assistant", message)
+    add_to_memory(conversation_history, 'assistant', message)
 
 monitor = AXIOMMonitor(alert_callback=handle_alert)
 monitor.start()
-
 butler = AXIOMButler(alert_callback=handle_alert, anthropic_client=client)
 butler.start()
+
+def extract_text_from_file(file, filename):
+    ext = filename.lower().split('.')[-1]
+    try:
+        if ext == 'pdf':
+            import PyPDF2
+            reader = PyPDF2.PdfReader(file)
+            text = ''
+            for page in reader.pages:
+                text += page.extract_text() or ''
+            return text[:4000]
+        elif ext == 'docx':
+            from docx import Document
+            doc = Document(file)
+            return '\n'.join([p.text for p in doc.paragraphs])[:4000]
+        elif ext in ['txt', 'md', 'py', 'js', 'html', 'css', 'json', 'csv']:
+            return file.read().decode('utf-8', errors='ignore')[:4000]
+        elif ext in ['jpg', 'jpeg', 'png', 'gif', 'webp']:
+            return None  # handled as image
+        else:
+            return file.read().decode('utf-8', errors='ignore')[:4000]
+    except Exception as e:
+        return f'Error reading file: {str(e)}'
 
 @app.route('/')
 def ui():
@@ -71,17 +94,15 @@ def face():
 
 @app.route('/health', methods=['GET'])
 def health():
-    return jsonify({"status": "AXIOM online", "messages": len(conversation_history)})
+    return jsonify({'status': 'AXIOM online', 'messages': len(conversation_history)})
 
 @app.route('/auth', methods=['POST'])
 def auth():
     data = request.json
     password = data.get('password', '')
-    axiom_password = os.getenv('AXIOM_PASSWORD', 'axiom2024')
-    if password == axiom_password:
-        token = generate_token()
-        return jsonify({"token": token})
-    return jsonify({"error": "Invalid password"}), 401
+    if password == os.getenv('AXIOM_PASSWORD', 'axiom2024'):
+        return jsonify({'token': generate_token()})
+    return jsonify({'error': 'Invalid password'}), 401
 
 @app.route('/alerts')
 def alerts():
@@ -89,12 +110,113 @@ def alerts():
         while True:
             try:
                 message = alert_queue.get(timeout=30)
-                data = json.dumps({"alert": message})
-                yield f"data: {data}\n\n"
+                yield f'data: {json.dumps({"alert": message})}\n\n'
             except queue.Empty:
-                yield f"data: {json.dumps({'ping': True})}\n\n"
+                yield f'data: {json.dumps({"ping": True})}\n\n'
     return Response(stream_with_context(generate()), mimetype='text/event-stream',
                    headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'})
+
+@app.route('/upload', methods=['POST'])
+@require_auth
+def upload():
+    """Handle file uploads — PDF, DOCX, images, text files"""
+    global conversation_history
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file provided'}), 400
+
+    file = request.files['file']
+    filename = file.filename
+    prompt = request.form.get('prompt', 'Analyze this file and tell me what you see.')
+    ext = filename.lower().split('.')[-1]
+
+    try:
+        if ext in ['jpg', 'jpeg', 'png', 'gif', 'webp']:
+            # Image — use Claude vision
+            image_data = base64.b64encode(file.read()).decode('utf-8')
+            media_type = f'image/{ext}' if ext != 'jpg' else 'image/jpeg'
+            response = client.messages.create(
+                model='claude-sonnet-4-5',
+                max_tokens=300,
+                system=SYSTEM_PROMPT,
+                messages=[{
+                    'role': 'user',
+                    'content': [
+                        {'type': 'image', 'source': {'type': 'base64', 'media_type': media_type, 'data': image_data}},
+                        {'type': 'text', 'text': prompt}
+                    ]
+                }]
+            )
+            result = response.content[0].text
+        else:
+            # Text/PDF/DOCX
+            text = extract_text_from_file(file, filename)
+            if not text:
+                return jsonify({'error': 'Could not extract text from file'}), 400
+
+            file_prompt = f'The user uploaded a file called "{filename}". Here is its content:\n\n{text}\n\n{prompt}'
+            conversation_history = add_to_memory(conversation_history, 'user', f'[Uploaded file: {filename}] {prompt}')
+            api_messages = [{'role': m['role'], 'content': m['content']} for m in conversation_history]
+            api_messages[-1]['content'] = file_prompt
+
+            response = client.messages.create(
+                model='claude-sonnet-4-5',
+                max_tokens=500,
+                system=SYSTEM_PROMPT,
+                messages=api_messages
+            )
+            result = response.content[0].text
+            add_to_memory(conversation_history, 'assistant', result)
+
+        return jsonify({'response': result, 'filename': filename})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/chat/stream', methods=['POST'])
+@require_auth
+def chat_stream():
+    global conversation_history
+    ip = request.remote_addr
+    if not rate_limit_check(ip, requests_store):
+        return jsonify({'error': 'Rate limit exceeded'}), 429
+
+    data = request.json
+    user_input = data.get('message', '')
+    conversation_history = add_to_memory(conversation_history, 'user', user_input)
+    api_messages = [{'role': m['role'], 'content': m['content']} for m in conversation_history]
+
+    def generate():
+        full_response = ''
+        with client.messages.stream(
+            model='claude-sonnet-4-5',
+            max_tokens=300,
+            system=SYSTEM_PROMPT,
+            messages=api_messages
+        ) as stream:
+            for text in stream.text_stream:
+                full_response += text
+                yield f'data: {json.dumps({"text": text})}\n\n'
+
+        result = full_response
+        for line in full_response.split('\n'):
+            line = line.strip()
+            if line.startswith('WATCH:'):
+                result = butler.add_to_watchlist(line.replace('WATCH:', '').strip())
+                yield f'data: {json.dumps({"text": result, "replace": True})}\n\n'
+            elif line.startswith('UNWATCH:'):
+                result = butler.remove_from_watchlist(line.replace('UNWATCH:', '').strip())
+                yield f'data: {json.dumps({"text": result, "replace": True})}\n\n'
+            elif line.startswith('WATCHLIST:'):
+                result = butler.get_watchlist()
+                yield f'data: {json.dumps({"text": result, "replace": True})}\n\n'
+            elif line.startswith('BRIEFING:'):
+                threading.Thread(target=butler.morning_briefing, daemon=True).start()
+
+        add_to_memory(conversation_history, 'assistant', result)
+        yield f'data: {json.dumps({"done": True, "full": result})}\n\n'
+
+    return Response(stream_with_context(generate()), mimetype='text/event-stream',
+                   headers={'Cache-Control': 'no-cache, no-store, must-revalidate',
+                            'X-Accel-Buffering': 'no', 'Pragma': 'no-cache'})
 
 @app.route('/chat', methods=['POST'])
 @require_auth
@@ -103,39 +225,27 @@ def chat():
     global conversation_history
     ip = request.remote_addr
     if not rate_limit_check(ip, requests_store):
-        return jsonify({"error": "Rate limit exceeded"}), 429
-    start_time = time.time()
+        return jsonify({'error': 'Rate limit exceeded'}), 429
     data = request.json
     user_input = data.get('message', '')
-    conversation_history = add_to_memory(conversation_history, "user", user_input)
-    api_messages = [{"role": m["role"], "content": m["content"]} for m in conversation_history]
-    response = client.messages.create(
-        model="claude-sonnet-4-5",
-        max_tokens=300,
-        system=SYSTEM_PROMPT,
-        messages=api_messages
-    )
+    conversation_history = add_to_memory(conversation_history, 'user', user_input)
+    api_messages = [{'role': m['role'], 'content': m['content']} for m in conversation_history]
+    response = client.messages.create(model='claude-sonnet-4-5', max_tokens=300, system=SYSTEM_PROMPT, messages=api_messages)
     full_response = response.content[0].text
-
-    # Handle butler commands
     result = full_response
     for line in full_response.split('\n'):
         line = line.strip()
         if line.startswith('WATCH:'):
-            topic = line.replace('WATCH:', '').strip()
-            result = butler.add_to_watchlist(topic)
+            result = butler.add_to_watchlist(line.replace('WATCH:', '').strip())
         elif line.startswith('UNWATCH:'):
-            topic = line.replace('UNWATCH:', '').strip()
-            result = butler.remove_from_watchlist(topic)
+            result = butler.remove_from_watchlist(line.replace('UNWATCH:', '').strip())
         elif line.startswith('WATCHLIST:'):
             result = butler.get_watchlist()
         elif line.startswith('BRIEFING:'):
-            result = "Sir, generating your briefing now. This will take a moment."
+            result = 'Sir, generating your briefing now.'
             threading.Thread(target=butler.morning_briefing, daemon=True).start()
-
-    conversation_history = add_to_memory(conversation_history, "assistant", result)
-    response_time = time.time() - start_time
-    return jsonify({"response": result, "response_time": response_time})
+    conversation_history = add_to_memory(conversation_history, 'assistant', result)
+    return jsonify({'response': result, 'response_time': 0})
 
 @app.route('/debate', methods=['POST'])
 @require_auth
@@ -143,12 +253,9 @@ def debate():
     data = request.json
     question = data.get('question', '')
     if not question:
-        return jsonify({"error": "No question provided"}), 400
-    try:
-        results = multi_agent_debate(question)
-        return jsonify(results)
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({'error': 'No question provided'}), 400
+    results = multi_agent_debate(question)
+    return jsonify(results)
 
 @app.route('/speak', methods=['POST'])
 @require_auth
@@ -156,52 +263,40 @@ def speak():
     data = request.json
     text = data.get('text', '')
     if not text:
-        return jsonify({"error": "No text provided"}), 400
+        return jsonify({'error': 'No text provided'}), 400
     try:
-        clean_text = text.replace("**", "").replace("##", "").replace("#", "").replace("*", "")
+        clean_text = text.replace('**', '').replace('##', '').replace('#', '').replace('*', '')
         audio = eleven.text_to_speech.convert(
-            voice_id=VOICE_ID,
-            text=clean_text[:500],
-            model_id="eleven_turbo_v2_5",
-            voice_settings=VoiceSettings(
-                stability=0.35,
-                similarity_boost=0.75,
-                style=0.40,
-                use_speaker_boost=True
-            )
+            voice_id=VOICE_ID, text=clean_text[:500], model_id='eleven_turbo_v2_5',
+            voice_settings=VoiceSettings(stability=0.35, similarity_boost=0.75, style=0.40, use_speaker_boost=True)
         )
-        audio_bytes = b"".join(audio)
-        audio_base64 = base64.b64encode(audio_bytes).decode('utf-8')
-        return jsonify({"audio": audio_base64})
+        audio_bytes = b''.join(audio)
+        return jsonify({'audio': base64.b64encode(audio_bytes).decode('utf-8')})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/stats', methods=['GET'])
+@require_auth
+def stats():
+    return jsonify({'stats': get_system_stats()})
 
 @app.route('/watchlist', methods=['GET'])
 @require_auth
 def watchlist():
-    return jsonify({"watchlist": butler.watchlist})
+    return jsonify({'watchlist': butler.watchlist})
 
 @app.route('/watch', methods=['POST'])
 @require_auth
 def watch():
     data = request.json
     topic = data.get('topic', '')
-    if not topic:
-        return jsonify({"error": "No topic provided"}), 400
-    result = butler.add_to_watchlist(topic)
-    return jsonify({"message": result})
+    return jsonify({'message': butler.add_to_watchlist(topic)})
 
 @app.route('/briefing', methods=['POST'])
 @require_auth
 def briefing():
-    import threading
     threading.Thread(target=butler.morning_briefing, daemon=True).start()
-    return jsonify({"message": "Sir, generating your briefing now."})
-
-@app.route('/stats', methods=['GET'])
-@require_auth
-def stats():
-    return jsonify({"stats": get_system_stats()})
+    return jsonify({'message': 'Sir, generating your briefing now.'})
 
 @app.route('/memory/clear', methods=['DELETE'])
 @require_auth
@@ -209,8 +304,8 @@ def clear():
     global conversation_history
     clear_memory()
     conversation_history = []
-    return jsonify({"status": "Memory cleared"})
+    return jsonify({'status': 'Memory cleared'})
 
-if __name__ == "__main__":
-    print("⚡ AXIOM FULLY OPERATIONAL — BUTLER + MONITOR + AGENTS + FACE")
-    app.run(host='0.0.0.0', port=8080)
+if __name__ == '__main__':
+    print('AXIOM FULLY OPERATIONAL')
+    app.run(host='0.0.0.0', port=8080, threaded=True)

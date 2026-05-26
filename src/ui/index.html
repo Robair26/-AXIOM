@@ -41,6 +41,7 @@
         .message.beta .sender { color: #ff88ff; }
         .message.gamma .sender { color: #ffaa00; }
         .message.synthesis .sender { color: #00ff88; }
+        .message.file .sender { color: #00aaff; }
         .message .text { font-size: 0.82em; line-height: 1.5; padding: 8px 10px; border-left: 2px solid rgba(0, 212, 255, 0.3); }
         .message.axiom .text { border-left-color: #00ff88; }
         .message.alert .text { border-left-color: #ff4444; }
@@ -48,6 +49,7 @@
         .message.beta .text { border-left-color: #ff88ff; }
         .message.gamma .text { border-left-color: #ffaa00; }
         .message.synthesis .text { border-left-color: #00ff88; }
+        .message.file .text { border-left-color: #00aaff; }
         .cursor { display: inline-block; width: 8px; height: 14px; background: #00ff88; animation: cursorBlink 0.7s infinite; vertical-align: middle; margin-left: 2px; }
         @keyframes cursorBlink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
         .input-area { flex-shrink: 0; padding-top: 8px; border-top: 1px solid rgba(0, 212, 255, 0.2); }
@@ -71,8 +73,8 @@
         .stop-btn { background: rgba(255, 68, 68, 0.1); border-color: rgba(255, 68, 68, 0.5); color: #ff4444; display: none; }
         .stop-btn.visible { display: block; }
         .debate-btn { background: rgba(255, 136, 255, 0.1); border-color: rgba(255, 136, 255, 0.5); color: #ff88ff; }
+        .upload-btn { background: rgba(0, 170, 255, 0.1); border-color: rgba(0, 170, 255, 0.5); color: #00aaff; }
         .send-btn { background: rgba(0, 212, 255, 0.15); border-color: rgba(0, 212, 255, 0.6); }
-        .panel-right { border: 1px solid rgba(0, 212, 255, 0.3); border-radius: 10px; padding: 15px; background: rgba(0, 212, 255, 0.03); overflow-y: auto; }
         .waveform { display: flex; align-items: center; justify-content: center; gap: 3px; height: 35px; margin: 8px 0; }
         .wave-bar { width: 3px; background: #00d4ff; border-radius: 3px; animation: wave 1s ease-in-out infinite; }
         .wave-bar:nth-child(2) { animation-delay: 0.1s; } .wave-bar:nth-child(3) { animation-delay: 0.2s; } .wave-bar:nth-child(4) { animation-delay: 0.3s; } .wave-bar:nth-child(5) { animation-delay: 0.4s; } .wave-bar:nth-child(6) { animation-delay: 0.3s; } .wave-bar:nth-child(7) { animation-delay: 0.2s; } .wave-bar:nth-child(8) { animation-delay: 0.1s; }
@@ -82,9 +84,16 @@
         .debate-sep { text-align: center; font-size: 0.6em; color: rgba(255, 136, 255, 0.5); letter-spacing: 0.3em; padding: 6px 0; border-top: 1px solid rgba(255, 136, 255, 0.2); border-bottom: 1px solid rgba(255, 136, 255, 0.2); margin: 6px 0; }
         .alert-flash { animation: alertFlash 0.5s ease-in-out 3; }
         @keyframes alertFlash { 0%, 100% { border-color: rgba(0, 212, 255, 0.3); } 50% { border-color: #ff4444; box-shadow: 0 0 20px rgba(255, 68, 68, 0.5); } }
+        .drop-zone { border: 2px dashed rgba(0, 170, 255, 0.4); border-radius: 8px; padding: 12px; text-align: center; font-size: 0.7em; color: rgba(0, 170, 255, 0.6); margin-bottom: 8px; transition: all 0.3s; display: none; cursor: pointer; }
+        .drop-zone.visible { display: block; }
+        .drop-zone.dragover { border-color: #00aaff; background: rgba(0, 170, 255, 0.1); color: #00aaff; }
+        .file-preview { background: rgba(0, 170, 255, 0.1); border: 1px solid rgba(0, 170, 255, 0.3); border-radius: 6px; padding: 6px 10px; font-size: 0.7em; color: #00aaff; margin-bottom: 6px; display: none; justify-content: space-between; align-items: center; }
+        .file-preview.visible { display: flex; }
+        .file-preview-close { cursor: pointer; color: #ff4444; font-size: 1.1em; }
         .mobile-stats { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 100; padding: 20px; overflow-y: auto; }
         .mobile-stats.visible { display: block; }
         .mobile-stats-close { position: absolute; top: 15px; right: 15px; background: none; border: 1px solid rgba(0,212,255,0.3); color: #00d4ff; padding: 6px 12px; cursor: pointer; font-family: 'Courier New', monospace; border-radius: 5px; }
+        #file-input { display: none; }
         @media (max-width: 768px) {
             .panel-left, .panel-right { display: none; }
             .main-area { padding: 8px; gap: 0; }
@@ -103,6 +112,7 @@
 <body>
     <div class="grid-bg"></div>
     <div class="scan-line"></div>
+    <input type="file" id="file-input" accept=".pdf,.docx,.txt,.md,.py,.js,.html,.css,.json,.csv,.jpg,.jpeg,.png,.gif,.webp">
 
     <div class="mobile-stats" id="mobile-stats">
         <button class="mobile-stats-close" onclick="toggleMobileStats()">✕ CLOSE</button>
@@ -121,14 +131,6 @@
                 <div class="metric"><div class="metric-label"><span>CPU</span><span id="cpu-val-m">--</span></div><div class="metric-bar"><div class="metric-fill" id="cpu-bar-m" style="width:0%"></div></div></div>
                 <div class="metric"><div class="metric-label"><span>MEMORY</span><span id="mem-val-m">--</span></div><div class="metric-bar"><div class="metric-fill" id="mem-bar-m" style="width:0%"></div></div></div>
                 <div class="metric"><div class="metric-label"><span>DISK</span><span id="disk-val-m">--</span></div><div class="metric-bar"><div class="metric-fill" id="disk-bar-m" style="width:0%"></div></div></div>
-            </div>
-            <div style="margin-top: 20px;">
-                <div class="panel-title">⬡ System Info</div>
-                <div class="status-item"><span>VERSION</span><span style="color:#00ff88;">1.0.0</span></div>
-                <div class="status-item"><span>BUILDER</span><span style="color:#00ff88;">CLASSIFIED</span></div>
-                <div class="status-item"><span>EDGE DEVICE</span><span style="color:#00ff88;">JETSON ORIN</span></div>
-                <div class="status-item"><span>CLOUD</span><span style="color:#00ff88;">DIGITALOCEAN</span></div>
-                <div class="status-item"><span>ORCHESTRATION</span><span style="color:#00ff88;">K8S</span></div>
             </div>
         </div>
     </div>
@@ -169,6 +171,13 @@
                     </div>
                 </div>
                 <div class="input-area">
+                    <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+                        📎 Drop a file here or click to upload — PDF, DOCX, image, code, text
+                    </div>
+                    <div class="file-preview" id="file-preview">
+                        <span id="file-name">No file</span>
+                        <span class="file-preview-close" onclick="clearFile()">✕</span>
+                    </div>
                     <div class="thinking" id="thinking">AXIOM PROCESSING...</div>
                     <div class="voice-status" id="voice-status"></div>
                     <div class="conv-mode">
@@ -179,6 +188,7 @@
                         <input type="text" class="chat-input" id="user-input" placeholder="Ask AXIOM anything..." onkeypress="handleKey(event)">
                         <button class="btn mic-btn" id="mic-btn" onclick="toggleVoice()">🎤</button>
                         <button class="btn stop-btn" id="stop-btn" onclick="stopSpeaking()">⏹</button>
+                        <button class="btn upload-btn" onclick="toggleDropZone()" title="Upload file">📎</button>
                         <button class="btn debate-btn" onclick="startDebate()">⚡</button>
                         <button class="btn send-btn" onclick="sendMessage()">SEND</button>
                     </div>
@@ -213,6 +223,7 @@
         <div class="mobile-nav">
             <button class="mobile-nav-btn" onclick="showMobileChat()">💬 CHAT</button>
             <button class="mobile-nav-btn" onclick="toggleMobileStats()">📊 STATS</button>
+            <button class="mobile-nav-btn" onclick="toggleDropZone()">📎 FILE</button>
             <button class="mobile-nav-btn" onclick="startDebate()">⚡ DEBATE</button>
         </div>
     </div>
@@ -224,36 +235,65 @@
         let isListening = false;
         let currentAudio = null;
         let conversationMode = false;
+        let selectedFile = null;
         const faceFrame = document.getElementById('face-frame');
 
         function notifyFace(state) {
             try { faceFrame.contentWindow.postMessage(state, '*'); } catch(e) {}
         }
 
-        function toggleMobileStats() {
-            document.getElementById('mobile-stats').classList.toggle('visible');
+        function toggleMobileStats() { document.getElementById('mobile-stats').classList.toggle('visible'); }
+        function showMobileChat() { document.getElementById('mobile-stats').classList.remove('visible'); }
+
+        function toggleDropZone() {
+            document.getElementById('drop-zone').classList.toggle('visible');
         }
 
-        function showMobileChat() {
-            document.getElementById('mobile-stats').classList.remove('visible');
+        function clearFile() {
+            selectedFile = null;
+            document.getElementById('file-preview').classList.remove('visible');
+            document.getElementById('file-input').value = '';
         }
+
+        // File input handler
+        document.getElementById('file-input').addEventListener('change', (e) => {
+            if (e.target.files[0]) {
+                selectedFile = e.target.files[0];
+                document.getElementById('file-name').textContent = `📎 ${selectedFile.name}`;
+                document.getElementById('file-preview').classList.add('visible');
+                document.getElementById('drop-zone').classList.remove('visible');
+                document.getElementById('voice-status').textContent = `File ready: ${selectedFile.name}`;
+            }
+        });
+
+        // Drag and drop
+        const dropZone = document.getElementById('drop-zone');
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            if (e.dataTransfer.files[0]) {
+                selectedFile = e.dataTransfer.files[0];
+                document.getElementById('file-name').textContent = `📎 ${selectedFile.name}`;
+                document.getElementById('file-preview').classList.add('visible');
+                dropZone.classList.remove('visible');
+                document.getElementById('voice-status').textContent = `File ready: ${selectedFile.name}`;
+            }
+        });
 
         function toggleConversationMode() {
             conversationMode = !conversationMode;
             document.getElementById('conv-toggle').classList.toggle('on', conversationMode);
             document.getElementById('conv-label').textContent = conversationMode ? 'CONVERSATION MODE ON' : 'CONVERSATION MODE OFF';
-            if (conversationMode) {
-                document.getElementById('voice-status').textContent = '🟢 READY — CLICK MIC TO START';
-            } else {
-                document.getElementById('voice-status').textContent = '';
-                stopSpeaking();
-            }
+            document.getElementById('voice-status').textContent = conversationMode ? '🟢 READY — CLICK MIC TO START' : '';
+            if (!conversationMode) stopSpeaking();
         }
 
         function initSpeech() {
             if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-                recognition = new SpeechRecognition();
+                const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+                recognition = new SR();
                 recognition.continuous = false;
                 recognition.interimResults = true;
                 recognition.lang = 'en-US';
@@ -264,20 +304,18 @@
                     document.getElementById('voice-status').textContent = '🔴 LISTENING...';
                     activateWaveform();
                 };
-                recognition.onresult = (event) => {
+                recognition.onresult = (e) => {
                     let interim = '', final = '';
-                    for (let i = event.resultIndex; i < event.results.length; i++) {
-                        if (event.results[i].isFinal) final += event.results[i][0].transcript;
-                        else interim += event.results[i][0].transcript;
+                    for (let i = e.resultIndex; i < e.results.length; i++) {
+                        if (e.results[i].isFinal) final += e.results[i][0].transcript;
+                        else interim += e.results[i][0].transcript;
                     }
                     document.getElementById('user-input').value = final || interim;
                     if (final) { document.getElementById('voice-status').textContent = '✅ SENDING...'; setTimeout(() => sendMessage(), 200); }
                 };
                 recognition.onerror = (e) => { document.getElementById('voice-status').textContent = '⚠️ ' + e.error; stopListening(); };
                 recognition.onend = () => stopListening();
-            } else {
-                document.getElementById('mic-btn').style.display = 'none';
-            }
+            } else { document.getElementById('mic-btn').style.display = 'none'; }
         }
 
         function toggleVoice() {
@@ -322,8 +360,7 @@
                     const buf = new ArrayBuffer(bytes.length);
                     const view = new Uint8Array(buf);
                     for (let i = 0; i < bytes.length; i++) view[i] = bytes.charCodeAt(i);
-                    const blob = new Blob([buf], { type: 'audio/mpeg' });
-                    currentAudio = new Audio(URL.createObjectURL(blob));
+                    currentAudio = new Audio(URL.createObjectURL(new Blob([buf], { type: 'audio/mpeg' })));
                     currentAudio.play();
                     currentAudio.onended = () => {
                         stopSpeaking();
@@ -349,12 +386,19 @@
         async function sendMessage() {
             const input = document.getElementById('user-input');
             const message = input.value.trim();
+
+            // If file is selected, upload it
+            if (selectedFile) {
+                await uploadFile(message || 'Analyze this file and tell me what you see.');
+                input.value = '';
+                return;
+            }
+
             if (!message) return;
             addMessage('YOU', message, 'user');
             input.value = '';
             if (!token) await authenticate();
 
-            // Create AXIOM message with streaming cursor
             const container = document.getElementById('chat-messages');
             const msgDiv = document.createElement('div');
             msgDiv.className = 'message axiom';
@@ -363,7 +407,6 @@
             container.scrollTop = container.scrollHeight;
 
             document.getElementById('voice-status').textContent = '⚡ AXIOM THINKING...';
-
             let fullResponse = '';
             let streamingEl = document.getElementById('streaming-text');
 
@@ -373,17 +416,12 @@
                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                     body: JSON.stringify({ message })
                 });
-
                 const reader = res.body.getReader();
                 const decoder = new TextDecoder();
-
                 while (true) {
                     const { done, value } = await reader.read();
                     if (done) break;
-
-                    const chunk = decoder.decode(value);
-                    const lines = chunk.split('\n');
-
+                    const lines = decoder.decode(value).split('\n');
                     for (const line of lines) {
                         if (line.startsWith('data: ')) {
                             try {
@@ -407,9 +445,43 @@
                     }
                 }
             } catch (e) {
-                if (streamingEl) streamingEl.innerHTML = 'Connection error: ' + e.message;
+                if (streamingEl) streamingEl.innerHTML = 'Error: ' + e.message;
                 document.getElementById('voice-status').textContent = '';
             }
+        }
+
+        async function uploadFile(prompt) {
+            if (!token) await authenticate();
+            const file = selectedFile;
+            addMessage('YOU', `📎 ${file.name} — ${prompt}`, 'file');
+            clearFile();
+            document.getElementById('thinking').style.display = 'block';
+            document.getElementById('voice-status').textContent = '📎 AXIOM READING FILE...';
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('prompt', prompt);
+
+            try {
+                const res = await fetch(`${API_URL}/upload`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    body: formData
+                });
+                const data = await res.json();
+                document.getElementById('thinking').style.display = 'none';
+                if (data.response) {
+                    addMessage('AXIOM', data.response, 'axiom');
+                    addActivity(`📎 File: ${file.name}`);
+                    await speak(data.response);
+                } else {
+                    addMessage('AXIOM', 'Error reading file: ' + (data.error || 'Unknown error'), 'axiom');
+                }
+            } catch (e) {
+                document.getElementById('thinking').style.display = 'none';
+                addMessage('AXIOM', 'File upload error: ' + e.message, 'axiom');
+            }
+            document.getElementById('voice-status').textContent = '';
         }
 
         function addMessage(sender, text, type) {
@@ -485,17 +557,15 @@
                 const cpuMatch = stats.match(/CPU is at ([\d.]+)%/);
                 const memMatch = stats.match(/Memory is at ([\d.]+)%/);
                 const diskMatch = stats.match(/Disk is at ([\d.]+)%/);
-                const sets = [
-                    ['cpu-val','cpu-bar',cpuMatch],['cpu-val-m','cpu-bar-m',cpuMatch],
-                    ['mem-val','mem-bar',memMatch],['mem-val-m','mem-bar-m',memMatch],
-                    ['disk-val','disk-bar',diskMatch],['disk-val-m','disk-bar-m',diskMatch]
-                ];
-                sets.forEach(([valId, barId, match]) => {
-                    if (match) {
-                        const el = document.getElementById(valId);
-                        const bar = document.getElementById(barId);
-                        if (el) el.textContent = match[1] + '%';
-                        if (bar) bar.style.width = match[1] + '%';
+                [['cpu-val','cpu-bar',cpuMatch],['cpu-val-m','cpu-bar-m',cpuMatch],
+                 ['mem-val','mem-bar',memMatch],['mem-val-m','mem-bar-m',memMatch],
+                 ['disk-val','disk-bar',diskMatch],['disk-val-m','disk-bar-m',diskMatch]
+                ].forEach(([v,b,m]) => {
+                    if (m) {
+                        const el = document.getElementById(v);
+                        const bar = document.getElementById(b);
+                        if (el) el.textContent = m[1] + '%';
+                        if (bar) bar.style.width = m[1] + '%';
                     }
                 });
             } catch (e) {}
